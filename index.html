@@ -1,0 +1,2066 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rent Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{
+    --paper: #EDE6D4;
+    --paper-line: rgba(60,45,30,0.10);
+    --ink: #241F1A;
+    --ink-soft: #5B5246;
+    --margin-red: #9B3B34;
+    --stamp-green: #33553A;
+    --stamp-green-bg: #E1E8DE;
+    --stamp-red-bg: #F3E0DC;
+    --stamp-amber-bg: #F1E4C9;
+    --stamp-amber: #8A6620;
+    --stamp-blue: #2E4A5E;
+    --stamp-blue-bg: #DEE6EA;
+    --card-bg: #F6F1E4;
+    --border: #C9BC9E;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      repeating-linear-gradient(var(--paper-line) 0px, var(--paper-line) 1px, transparent 1px, transparent 34px),
+      var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Mono', monospace;
+    padding:28px 18px 60px;
+  }
+  .wrap{max-width:1000px;margin:0 auto;}
+
+  header{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    border-bottom:3px double var(--ink);
+    padding-bottom:14px;margin-bottom:22px;flex-wrap:wrap;gap:12px;
+  }
+  header h1{font-family:'Source Serif 4', serif;font-weight:700;font-size:32px;margin:0;letter-spacing:0.3px;}
+  header .sub{font-size:12px;color:var(--ink-soft);margin-top:4px;}
+  .month-nav{display:flex;align-items:center;gap:10px;font-family:'Source Serif 4', serif;font-size:17px;}
+  .month-nav button{background:none;border:1px solid var(--ink);width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:15px;color:var(--ink);}
+  .month-nav button:hover{background:var(--ink);color:var(--paper);}
+  .month-nav .mlabel{min-width:150px;text-align:center;}
+  .gear{background:none;border:1px solid var(--ink);width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px;color:var(--ink);}
+  .gear:hover{background:var(--ink);color:var(--paper);}
+
+  .banner{
+    border:1.5px solid var(--stamp-amber);background:var(--stamp-amber-bg);
+    padding:12px 14px;border-radius:3px;margin-bottom:18px;font-size:12.5px;line-height:1.55;
+  }
+  .banner b{font-family:'Source Serif 4',serif;display:block;font-size:14px;margin-bottom:4px;}
+  .banner .bx{float:right;cursor:pointer;border:none;background:none;font-size:14px;color:var(--ink-soft);}
+
+  .stamps{display:flex;gap:14px;margin-bottom:24px;flex-wrap:wrap;}
+  .stamp{flex:1;min-width:140px;border:2px solid var(--ink);border-radius:4px;padding:12px 14px;background:var(--card-bg);transform:rotate(-0.4deg);}
+  .stamp:nth-child(2){transform:rotate(0.5deg);}
+  .stamp:nth-child(3){transform:rotate(-0.2deg);}
+  .stamp:nth-child(4){transform:rotate(0.3deg);}
+  .stamp .label{font-size:10.5px;text-transform:uppercase;letter-spacing:1.3px;color:var(--ink-soft);}
+  .stamp .scope{font-size:9.5px;letter-spacing:0.6px;color:var(--ink-soft);opacity:.75;}
+  .stamp .value{font-family:'Source Serif 4', serif;font-size:22px;font-weight:700;margin-top:2px;}
+  .stamp.paid{border-color:var(--stamp-green);} .stamp.paid .value{color:var(--stamp-green);}
+  .stamp.pending{border-color:var(--stamp-amber);} .stamp.pending .value{color:var(--stamp-amber);}
+  .stamp.due{border-color:var(--margin-red);} .stamp.due .value{color:var(--margin-red);}
+  .stamp.elec{border-color:var(--stamp-blue);} .stamp.elec .value{color:var(--stamp-blue);}
+
+  .toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
+  input, select, textarea{font-family:'IBM Plex Mono', monospace;font-size:13px;background:var(--card-bg);border:1px solid var(--border);padding:8px 10px;border-radius:3px;color:var(--ink);}
+  input:focus, select:focus, textarea:focus{outline:2px solid var(--ink);outline-offset:1px;}
+  .search{flex:1;min-width:160px;}
+  .btn{font-family:'IBM Plex Mono', monospace;font-size:13px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);padding:8px 14px;border-radius:3px;cursor:pointer;}
+  .btn:hover{background:#3a332a;}
+  .btn.ghost{background:transparent;color:var(--ink);}
+  .btn.ghost:hover{background:var(--paper-line);}
+  .btn.small{padding:5px 9px;font-size:11.5px;}
+  .btn[disabled]{opacity:0.45;cursor:default;}
+  .btn.wa{border-color:var(--stamp-green);color:var(--stamp-green);background:transparent;text-decoration:none;display:inline-block;}
+  .btn.wa:hover{background:var(--stamp-green-bg);}
+  .btn.danger{border-color:var(--margin-red);color:var(--margin-red);background:transparent;}
+  .btn.danger:hover{background:var(--stamp-red-bg);}
+
+  .ledger{border:1px solid var(--ink);background:var(--card-bg);position:relative;padding-left:34px;border-radius:2px;overflow:hidden;}
+  .ledger::before{content:"";position:absolute;left:26px;top:0;bottom:0;width:1px;background:var(--margin-red);opacity:0.55;}
+  .row{display:grid;grid-template-columns:24px 1.5fr 0.85fr 0.85fr 0.9fr auto;gap:10px;align-items:center;padding:11px 14px 11px 4px;border-bottom:1px solid var(--paper-line);font-size:13px;}
+  .row.head{font-size:10px;text-transform:uppercase;letter-spacing:1.1px;color:var(--ink-soft);border-bottom:1.5px solid var(--ink);padding-top:6px;padding-bottom:8px;}
+  .row:last-child{border-bottom:none;}
+  .row .idx{color:var(--ink-soft);font-size:11px;}
+  .row .name{font-family:'Source Serif 4', serif;font-weight:600;font-size:15px;cursor:pointer;}
+  .row .name:hover{text-decoration:underline;}
+  .row .unit{color:var(--ink-soft);font-size:12px;font-family:'IBM Plex Mono',monospace;font-weight:400;}
+  .row .due{font-size:12.5px;color:var(--margin-red);font-weight:600;}
+  .row .due.zero{color:var(--ink-soft);font-weight:400;}
+  .row .due.credit{color:var(--stamp-green);font-weight:600;}
+  .chip{display:inline-block;font-size:10.5px;padding:3px 8px;border-radius:2px;letter-spacing:0.3px;text-align:center;border:1px solid transparent;}
+  .chip.paid{background:var(--stamp-green-bg);color:var(--stamp-green);border-color:var(--stamp-green);}
+  .chip.overdue{background:var(--stamp-red-bg);color:var(--margin-red);border-color:var(--margin-red);}
+  .chip.pending{background:var(--stamp-amber-bg);color:var(--stamp-amber);border-color:var(--stamp-amber);}
+  .chip.partial{background:var(--stamp-amber-bg);color:var(--margin-red);border-color:var(--margin-red);}
+  .chip.upcoming{background:transparent;color:var(--ink-soft);border-color:var(--border);}
+  .chip.na{background:transparent;color:var(--ink-soft);border-color:transparent;opacity:.55;}
+  .chip.none{background:transparent;color:var(--ink-soft);border-color:var(--border);opacity:.6;}
+  .row .actions{display:flex;gap:5px;}
+  .icon-btn{background:none;border:none;cursor:pointer;color:var(--ink-soft);font-size:13px;padding:3px 5px;}
+  .icon-btn:hover{color:var(--ink);}
+
+  .empty{padding:40px 20px;text-align:center;color:var(--ink-soft);font-size:13px;}
+  .empty b{display:block;font-family:'Source Serif 4', serif;font-size:17px;color:var(--ink);margin-bottom:6px;font-weight:600;}
+
+  .overlay{position:fixed;inset:0;background:rgba(36,31,26,0.45);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50;overflow-y:auto;}
+  .modal{background:var(--paper);border:2px solid var(--ink);border-radius:4px;padding:22px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;margin:auto;}
+  .modal h2{font-family:'Source Serif 4', serif;font-size:20px;margin:0 0 6px;}
+  .modal .msub{font-size:11px;color:var(--ink-soft);margin-bottom:14px;line-height:1.5;}
+  .field{margin-bottom:12px;}
+  .field.two{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .field label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:var(--ink-soft);margin-bottom:4px;}
+  .field .hint{text-transform:none;letter-spacing:0;font-size:10.5px;opacity:.85;display:block;margin-top:3px;}
+  .field input, .field textarea{width:100%;}
+  .modal .row-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;flex-wrap:wrap;}
+  .bsdate{display:grid;grid-template-columns:1fr 1.3fr 0.8fr;gap:6px;}
+  .bsdate select{width:100%;}
+  .bsmonth{display:grid;grid-template-columns:1fr 1.3fr;gap:6px;}
+  .bsmonth select{width:100%;}
+
+  .tabs{display:flex;gap:2px;border-bottom:1.5px solid var(--ink);margin-bottom:16px;flex-wrap:wrap;}
+  .tab{font-family:'IBM Plex Mono',monospace;font-size:11.5px;text-transform:uppercase;letter-spacing:0.6px;padding:8px 10px;background:none;border:none;cursor:pointer;color:var(--ink-soft);border-bottom:2px solid transparent;margin-bottom:-1.5px;}
+  .tab.active{color:var(--ink);border-bottom-color:var(--ink);font-weight:600;}
+
+  .kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--paper-line);font-size:13px;gap:10px;}
+  .kv b{font-weight:600;text-align:right;}
+  .kv.big{font-size:16px;padding:10px 0;}
+  .kv.big b{font-family:'Source Serif 4', serif;font-size:19px;}
+  .kv.big.due b{color:var(--margin-red);}
+  .kv.big.credit b{color:var(--stamp-green);}
+  .kv.sub{font-size:12px;color:var(--ink-soft);border-bottom:none;padding:2px 0;}
+
+  .anchor-box{border:1px dashed var(--ink);background:var(--card-bg);padding:10px 12px;border-radius:3px;margin:10px 0;font-size:12px;line-height:1.55;}
+  .anchor-box b{font-weight:600;}
+
+  .receipt{border:1px dashed var(--ink);padding:14px;margin-top:10px;background:var(--card-bg);font-size:13px;}
+  .receipt .r-title{font-family:'Source Serif 4', serif;font-weight:700;font-size:15px;margin-bottom:8px;}
+  .receipt .r-line{display:flex;justify-content:space-between;padding:2px 0;color:var(--ink-soft);}
+  .receipt .r-line b{color:var(--ink);font-weight:600;}
+
+  .hist-item{border-bottom:1px solid var(--paper-line);padding:9px 0;font-size:12.5px;display:flex;justify-content:space-between;gap:10px;align-items:flex-start;}
+  .hist-item.removed{opacity:.5;}
+  .ledger-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .ledger-table th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:0.6px;color:var(--ink-soft);border-bottom:2px solid var(--ink);padding:6px 8px;white-space:nowrap;}
+  .ledger-table td{padding:6px 8px;border-bottom:1px solid var(--paper-line);vertical-align:top;}
+  .ledger-table tr.removed td{opacity:.45;text-decoration:line-through;}
+  .ledger-table td.debit{color:var(--margin-red);white-space:nowrap;}
+  .ledger-table td.credit{color:var(--stamp-green);white-space:nowrap;}
+  .hist-item .hdate{color:var(--ink-soft);font-size:11px;}
+  .hist-note{color:var(--ink-soft);font-size:11px;font-style:italic;}
+
+  .calc-line{font-size:12px;color:var(--ink-soft);margin-top:-6px;margin-bottom:12px;line-height:1.6;}
+  .calc-line b{color:var(--ink);}
+
+  .sync-status{border:1.5px solid var(--border);border-radius:3px;padding:11px 12px;font-size:12px;line-height:1.55;background:var(--card-bg);}
+  .sync-status.off{border-color:var(--stamp-amber);background:var(--stamp-amber-bg);}
+  .sync-status.on{border-color:var(--stamp-green);background:var(--stamp-green-bg);}
+  .sync-status .st{display:block;font-weight:600;font-size:12.5px;margin-bottom:4px;}
+  .sync-status ol{margin:8px 0 0 16px;padding:0;}
+  .sync-status li{margin-bottom:3px;}
+  code{background:rgba(0,0,0,0.06);padding:1px 4px;border-radius:2px;font-size:11.5px;}
+
+  footer{margin-top:26px;text-align:center;font-size:11px;color:var(--ink-soft);line-height:1.7;}
+
+  @media (max-width:640px){
+    .row{grid-template-columns:18px 1.4fr 0.8fr auto;}
+    .row.head{display:none;}
+    .row .unit,.row .due{display:none;}
+    .bsdate{grid-template-columns:1fr;}
+    .field.two{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<script>
+/* ---------- Bikram Sambat calendar data & conversion ---------- */
+const BS_MONTHS = ["Baishakh","Jestha","Ashadh","Shrawan","Bhadra","Ashwin","Kartik","Mangsir","Poush","Magh","Falgun","Chaitra"];
+const BS_DATA = {
+  2000:[30,32,31,32,31,30,30,30,29,30,29,31], 2001:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2002:[31,31,32,32,31,30,30,29,30,29,30,30], 2003:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2004:[30,32,31,32,31,30,30,30,29,30,29,31], 2005:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2006:[31,31,32,32,31,30,30,29,30,29,30,30], 2007:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2008:[31,31,31,32,31,31,29,30,30,29,29,31], 2009:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2010:[31,31,32,32,31,30,30,29,30,29,30,30], 2011:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2012:[31,31,31,32,31,31,29,30,30,29,30,30], 2013:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2014:[31,31,32,32,31,30,30,29,30,29,30,30], 2015:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2016:[31,31,31,32,31,31,29,30,30,29,30,30], 2017:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2018:[31,32,31,32,31,30,30,29,30,29,30,30], 2019:[31,32,31,32,31,30,30,30,29,30,29,31],
+  2020:[31,31,31,32,31,31,30,29,30,29,30,30], 2021:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2022:[31,32,31,32,31,30,30,30,29,29,30,30], 2023:[31,32,31,32,31,30,30,30,29,30,29,31],
+  2024:[31,31,31,32,31,31,30,29,30,29,30,30], 2025:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2026:[31,32,31,32,31,30,30,30,29,29,30,31], 2027:[30,32,31,32,31,30,30,30,29,30,29,31],
+  2028:[31,31,32,31,31,31,30,29,30,29,30,30], 2029:[31,31,32,31,32,30,30,29,30,29,30,30],
+  2030:[31,32,31,32,31,30,30,30,29,29,30,31], 2031:[30,32,31,32,31,30,30,30,29,30,29,31],
+  2032:[31,31,32,31,31,31,30,29,30,29,30,30], 2033:[31,31,32,32,31,30,30,29,30,29,30,30],
+  2034:[31,32,31,32,31,30,30,30,29,29,30,31], 2035:[30,32,31,32,31,31,29,30,30,29,29,31],
+  2036:[31,31,32,31,31,31,30,29,30,29,30,30], 2037:[31,31,32,32,31,30,30,29,30,29,30,30],
+  2038:[31,32,31,32,31,30,30,30,29,29,30,31], 2039:[31,31,31,32,31,31,29,30,30,29,30,30],
+  2040:[31,31,32,31,31,31,30,29,30,29,30,30], 2041:[31,31,32,32,31,30,30,29,30,29,30,30],
+  2042:[31,32,31,32,31,30,30,30,29,29,30,31], 2043:[31,31,31,32,31,31,29,30,30,29,30,30],
+  2044:[31,31,32,31,31,31,30,29,30,29,30,30], 2045:[31,32,31,32,31,30,30,29,30,29,30,30],
+  2046:[31,32,31,32,31,30,30,30,29,29,30,31], 2047:[31,31,31,32,31,31,30,29,30,29,30,30],
+  2048:[31,31,32,31,31,31,30,29,30,29,30,30], 2049:[31,32,31,32,31,30,30,30,29,29,30,30],
+  2050:[31,32,31,32,31,30,30,30,29,30,29,31], 2051:[31,31,31,32,31,31,30,29,30,29,30,30],
+  2052:[31,31,32,31,31,31,30,29,30,29,30,30], 2053:[31,32,31,32,31,30,30,30,29,29,30,30],
+  2054:[31,32,31,32,31,30,30,30,29,30,29,31], 2055:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2056:[31,31,32,31,32,30,30,29,30,29,30,30], 2057:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2058:[30,32,31,32,31,30,30,30,29,30,29,31], 2059:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2060:[31,31,32,32,31,30,30,29,30,29,30,30], 2061:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2062:[30,32,31,32,31,31,29,30,29,30,29,31], 2063:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2064:[31,31,32,32,31,30,30,29,30,29,30,30], 2065:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2066:[31,31,31,32,31,31,29,30,30,29,29,31], 2067:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2068:[31,31,32,32,31,30,30,29,30,29,30,30], 2069:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2070:[31,31,31,32,31,31,29,30,30,29,30,30], 2071:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2072:[31,32,31,32,31,30,30,29,30,29,30,30], 2073:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2074:[31,31,31,32,31,31,30,29,30,29,30,30], 2075:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2076:[31,32,31,32,31,30,30,30,29,29,30,30], 2077:[31,32,31,32,31,30,30,30,29,30,29,31],
+  2078:[31,31,31,32,31,31,30,29,30,29,30,30], 2079:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2080:[31,32,31,32,31,30,30,30,29,29,30,30], 2081:[31,31,32,32,31,30,30,30,29,30,30,30],
+  2082:[30,32,31,32,31,30,30,30,29,30,30,30], 2083:[31,31,32,31,31,30,30,30,29,30,30,30],
+  2084:[31,31,32,31,31,30,30,30,29,30,30,30], 2085:[31,32,31,32,30,31,30,30,29,30,30,30],
+  2086:[30,32,31,32,31,30,30,30,29,30,30,30], 2087:[31,31,32,31,31,31,30,30,29,30,30,30],
+  2088:[30,31,32,32,30,31,30,30,29,30,30,30], 2089:[30,32,31,32,31,30,30,30,29,30,30,30],
+  2090:[30,32,31,32,31,30,30,30,29,30,30,30], 2091:[31,31,32,31,31,31,30,30,29,30,30,30],
+  2092:[31,31,32,32,31,30,30,30,29,30,30,30]
+};
+const BS_MIN_YEAR = 2000, BS_MAX_YEAR = 2092;
+const EPOCH_AD_MS = Date.UTC(1943,3,14); // = BS 2000-01-01
+const DAY_MS = 86400000;
+
+function bsYearTotal(y){ return BS_DATA[y].reduce((a,b)=>a+b,0); }
+function bsMonthLen(y,m){ return (BS_DATA[y] ? BS_DATA[y][m-1] : 30); }
+
+function adToBs(adMs){
+  let diff = Math.floor((adMs - EPOCH_AD_MS)/DAY_MS);
+  if(diff < 0) diff = 0;
+  let y = BS_MIN_YEAR;
+  while(y <= BS_MAX_YEAR && diff >= bsYearTotal(y)){ diff -= bsYearTotal(y); y++; }
+  if(y > BS_MAX_YEAR) y = BS_MAX_YEAR;
+  let m = 1;
+  while(m <= 12 && diff >= bsMonthLen(y,m)){ diff -= bsMonthLen(y,m); m++; }
+  if(m > 12) m = 12;
+  return { y, m, d: diff+1 };
+}
+function bsToAdMs(y,m,d){
+  let days = 0;
+  for(let yy=BS_MIN_YEAR; yy<y; yy++) days += bsYearTotal(yy);
+  for(let mm=1; mm<m; mm++) days += bsMonthLen(y,mm);
+  days += (d-1);
+  return EPOCH_AD_MS + days*DAY_MS;
+}
+/* Uses the device's LOCAL calendar day. Comparing Date.now() (a UTC instant)
+   against a UTC epoch made the app roll over at 05:45 local time in Nepal, so
+   anything entered between midnight and quarter to six got yesterday's date. */
+function bsToday(){
+  const d = new Date();
+  return adToBs(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+}
+function pad2(n){ return String(n).padStart(2,'0'); }
+function bsObjToStr(o){ return o.y+"-"+pad2(o.m)+"-"+pad2(o.d); }
+function bsStrToObj(s){ const [y,m,d] = String(s||'').split('-').map(Number); return {y:y||bsToday().y, m:m||1, d:d||1}; }
+function bsMonthKeyNum(y,m){ return y*12+m; }
+function bsKeyStr(y,m){ return y+"-"+pad2(m); }
+function bsSortKey(s){ const o=bsStrToObj(s); return o.y*10000+o.m*100+o.d; }
+function fmtBs(s){ if(!s) return '—'; const o=bsStrToObj(s); return o.d+" "+BS_MONTHS[o.m-1]+" "+o.y; }
+function fmtBsMonth(mk){ if(!mk) return '—'; const [y,m]=String(mk).split('-').map(Number); return BS_MONTHS[m-1]+" "+y; }
+function todayStr(){ return bsObjToStr(bsToday()); }
+
+const BS_YEAR_MIN_PICK = 2040;
+function bsDateInputHTML(prefix, bsStr){
+  const o = bsStrToObj(bsStr);
+  const yStart = BS_YEAR_MIN_PICK, yEnd = Math.min(BS_MAX_YEAR, bsToday().y+3);
+  let yOpts=''; for(let y=yStart;y<=yEnd;y++) yOpts += `<option value="${y}" ${y===o.y?'selected':''}>${y}</option>`;
+  let mOpts=''; BS_MONTHS.forEach((name,i)=>{ const mv=i+1; mOpts += `<option value="${mv}" ${mv===o.m?'selected':''}>${name}</option>`; });
+  let dOpts=''; for(let d=1;d<=32;d++) dOpts += `<option value="${d}" ${d===o.d?'selected':''}>${d}</option>`;
+  return `<div class="bsdate">
+    <select id="${prefix}-y">${yOpts}</select>
+    <select id="${prefix}-m">${mOpts}</select>
+    <select id="${prefix}-d">${dOpts}</select>
+  </div>`;
+}
+function readBsDateInput(prefix){
+  const y = Number(document.getElementById(prefix+'-y').value);
+  const m = Number(document.getElementById(prefix+'-m').value);
+  let d = Number(document.getElementById(prefix+'-d').value);
+  d = Math.min(d, bsMonthLen(y,m));
+  return bsObjToStr({y,m,d});
+}
+function bsMonthInputHTML(prefix, mKey){
+  const [cy,cm] = String(mKey||bsKeyStr(bsToday().y,bsToday().m)).split('-').map(Number);
+  const yEnd = Math.min(BS_MAX_YEAR, bsToday().y+3);
+  let yOpts=''; for(let y=BS_YEAR_MIN_PICK;y<=yEnd;y++) yOpts += `<option value="${y}" ${y===cy?'selected':''}>${y}</option>`;
+  let mOpts=''; BS_MONTHS.forEach((name,i)=>{ const mv=i+1; mOpts += `<option value="${mv}" ${mv===cm?'selected':''}>${name}</option>`; });
+  return `<div class="bsmonth"><select id="${prefix}-y">${yOpts}</select><select id="${prefix}-m">${mOpts}</select></div>`;
+}
+function readBsMonthInput(prefix){
+  const y = Number(document.getElementById(prefix+'-y').value);
+  const m = Number(document.getElementById(prefix+'-m').value);
+  return bsKeyStr(y,m);
+}
+
+/* ---------- Money: everything is stored as an integer number of paisa ----------
+   Rupee floats drift once you multiply units by a rate and add a dozen of them
+   together, which is why the old build needed a 0.5-rupee fudge factor before it
+   would compare two balances. Integers do not drift. Rupees exist only at the
+   edges: parsed on input, formatted on output. */
+function toPaisa(v){
+  if(v === '' || v === null || v === undefined) return 0;
+  const n = Number(String(v).replace(/[^0-9.\-]/g,''));
+  if(!isFinite(n)) return 0;
+  return Math.round(n*100);
+}
+function paisaToInput(p){
+  const v = (Number(p)||0)/100;
+  return Number.isInteger(v) ? String(v) : v.toFixed(2);
+}
+function fmtNPR(p){
+  let n = Math.round(Number(p)||0);
+  const neg = n < 0; n = Math.abs(n);
+  const rupees = Math.floor(n/100), paisa = n%100;
+  return (neg?'-':'') + 'Rs ' + rupees.toLocaleString('en-IN') + (paisa ? '.'+pad2(paisa) : '');
+}
+function plainNPR(p){ return fmtNPR(p).replace('Rs ','Rs '); }
+function readMoney(id){ const el = document.getElementById(id); return toPaisa(el ? el.value : 0); }
+function moneyInputHTML(id, paisa, extra){
+  return `<input id="${id}" type="number" step="0.01" value="${paisaToInput(paisa)}" ${extra||''}>`;
+}
+
+function uid(){ return 'x'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function now(){ return Date.now(); }
+function escapeHtml(s){ return String(s===null||s===undefined?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ return escapeHtml(s); }
+
+/* ---------- Storage ----------
+   New namespace, so a copy of the previous version sitting in the same browser
+   keeps its own data untouched and can be re-imported if anything looks wrong. */
+const SCHEMA = 2;
+const NS = 'rentledger2_';
+const LEGACY_NS = 'rentledger_';
+const STORE_KEYS = ['houses','tenants','entries','readings','settings'];
+
+/* ---------- Optional: Google Drive sync (cross-device) ----------
+   OFF until a developer fills in GOOGLE_CLIENT_ID below AND the page is served
+   from a real https:// address. Until both are true, Export / Import in Settings
+   is the only way to move data between devices. The Settings panel says so
+   plainly rather than burying it. Setup:
+   1) Google Cloud Console -> create an OAuth 2.0 Client ID (Web application).
+   2) Add this page's exact address as an Authorized JavaScript origin
+      (e.g. https://yourname.github.io/rent-ledger/). Opening the file from
+      disk (file://) or from an email attachment will never work.
+   3) Paste the Client ID below and reload. */
+const GOOGLE_CLIENT_ID = '520704440415-ufqajotfoe2rkjurt9mf8o9ek0a41srv.apps.googleusercontent.com'; // <-- paste your OAuth Client ID here to enable sync
+const DRIVE_FILE_NAME = 'rent-ledger-data.json';
+
+/* ---------- App state ----------
+   houses   : [{id,name,address,updatedAt,deleted,deletedAt}]
+   tenants  : [{id,name,phone,houseId,rooms:[{id,label,rentP,since}],rentP,unit,
+                dueDay,depositP,leaseStart,
+                anchorDate,anchorBalanceP,anchorNote,   <- "as of this date, balance was X"
+                rentHistory:[{id,mKey,oldRentP,newRentP,type,note,date}],
+                updatedAt,deleted,deletedAt}]
+   entries  : { tenantId: [ {id,kind,bucket,date,amountP,mKey,note,label,updatedAt,deleted,deletedAt} ] }
+              kind: 'payment' | 'credit' | 'charge'   bucket: 'rent' | 'elec'
+   readings : { tenantId: { mKey: {prevReading,currReading,units,rateP,readingDate,note,updatedAt,deleted,deletedAt} } }
+              The BILL is derived from the reading. Nothing stores a running
+              electricity total any more, so it cannot drift out of step. */
+const state = {
+  houses: [], tenants: [], entries: {}, readings: {},
+  settings: { elecRateP: 1200, schema: SCHEMA },
+  month: null, search: "", houseFilter: "", loaded: false,
+  modal: null, detailTab: 'overview', showRemoved: false, notice: null,
+  google: { signedIn:false, email:'', fileId:null, syncing:false, lastSynced:null, tokenClient:null, accessToken:null, tokenExpiresAt:0 },
+};
+
+function defaultsFor(k){
+  if(k==='settings') return { elecRateP: 1200, schema: SCHEMA };
+  if(k==='tenants' || k==='houses') return [];
+  return {};
+}
+async function save(key){
+  invalidateLedgers();
+  try{ localStorage.setItem(NS+key, JSON.stringify(state[key])); }
+  catch(e){
+    console.error('save '+key+' failed', e);
+    alert('Could not save — your browser storage may be full or blocked (e.g. private/incognito mode).');
+  }
+  schedulePush();
+}
+function saveAll(){ return Promise.all(STORE_KEYS.map(save)); }
+
+/* ---------- Migration from the previous version ---------- */
+function migrateLegacy(src){
+  const out = { houses: [], tenants: [], entries: {}, readings: {}, settings: { elecRateP: toPaisa((src.settings&&src.settings.elecRate)||12), schema: SCHEMA } };
+  const stamp = now();
+  const houses = Array.isArray(src.houses) ? src.houses : [];
+  houses.forEach(h => out.houses.push({ id:h.id, name:h.name, address:h.address||'', updatedAt:stamp, deleted:false, deletedAt:null }));
+
+  (Array.isArray(src.tenants)?src.tenants:[]).forEach(t => {
+    const rooms = Array.isArray(t.rooms) && t.rooms.length
+      ? t.rooms.map(r => ({ id:r.id||uid(), label:r.label||'Room', rentP:toPaisa(r.rent), since:r.since||t.leaseStart||null }))
+      : [{ id:uid(), label:t.unit||'Room', rentP:toPaisa(t.rent), since:t.leaseStart||null }];
+    const settles = (src.settlements && src.settlements[t.id]) || [];
+    // openingDue was decremented in place each time a settlement was recorded,
+    // so the gross figure is openingDue + everything settled against it.
+    const grossOpeningP = toPaisa(t.openingDue) + settles.reduce((s,x)=>s+toPaisa(x.amount),0);
+    const nt = {
+      id: t.id, name: t.name, phone: t.phone||'', houseId: t.houseId||null,
+      rooms, rentP: rooms.reduce((s,r)=>s+r.rentP,0),
+      unit: rooms.map(r=>r.label).filter(Boolean).join(' + ') || (t.unit||''),
+      dueDay: Number(t.dueDay||5), depositP: toPaisa(t.deposit),
+      leaseStart: t.leaseStart || todayStr(),
+      anchorDate: t.leaseStart || todayStr(),
+      anchorBalanceP: grossOpeningP,
+      anchorNote: 'Carried over from the previous version',
+      rentHistory: (t.rentHistory||[]).map(rh => ({
+        id: rh.id||uid(), date: rh.date, mKey: rh.mKey || String(rh.date||'').slice(0,7),
+        oldRentP: toPaisa(rh.oldRent), newRentP: toPaisa(rh.newRent),
+        type: rh.type||'increase', note: rh.note||''
+      })),
+      updatedAt: stamp, deleted:false, deletedAt:null,
+    };
+    out.tenants.push(nt);
+
+    const list = out.entries[t.id] = [];
+    settles.forEach(s => list.push({
+      id: uid(), kind:'payment', bucket:'rent', date: s.date, amountP: toPaisa(s.amount),
+      mKey: null, note: s.note||'', label:'Settlement received', updatedAt: stamp, deleted:false, deletedAt:null
+    }));
+    const pay = (src.payments && src.payments[t.id]) || {};
+    Object.keys(pay).forEach(mk => {
+      const r = pay[mk];
+      if(r && r.paid) list.push({
+        id: uid(), kind:'payment', bucket:'rent', date: r.date||mk+'-01', amountP: toPaisa(r.amount),
+        mKey: mk, note: r.note||'', label:'Rent payment received', updatedAt: stamp, deleted:false, deletedAt:null
+      });
+    });
+
+    const elec = (src.electricity && src.electricity[t.id]) || {};
+    const rd = out.readings[t.id] = {};
+    const mKeys = Object.keys(elec).sort();
+    mKeys.forEach((mk, i) => {
+      const r = elec[mk]; if(!r) return;
+      // handles both the newest shape and the original {prev,curr,rate,amount,paid,date}
+      const isNew = r.unitsAmount !== undefined || r.currReading !== undefined;
+      const prev = Number(isNew ? r.prevReading : r.prev) || 0;
+      const curr = Number(isNew ? r.currReading : r.curr) || 0;
+      const units = Number(r.units != null ? r.units : Math.max(0, curr-prev)) || 0;
+      const rateP = toPaisa(r.rate);
+      rd[mk] = {
+        prevReading: prev, currReading: curr, units, rateP,
+        readingDate: (isNew ? r.readingDate : r.date) || mk+'-01',
+        note: r.note||'', updatedAt: stamp, deleted:false, deletedAt:null
+      };
+      // Only the EARLIEST bill's carried-over figure held real information (a
+      // pre-app balance typed in by hand). Every later one was just the running
+      // total, which the ledger now recomputes for itself.
+      if(i === 0){
+        const broughtP = toPaisa(isNew ? r.carriedOver : 0);
+        if(broughtP > 0) list.push({
+          id: uid(), kind:'charge', bucket:'elec', date: rd[mk].readingDate, amountP: broughtP,
+          mKey: mk, note:'', label:'Electricity balance brought forward', updatedAt: stamp, deleted:false, deletedAt:null
+        });
+      }
+      const paidP = isNew ? toPaisa(r.paidAmount) : (r.paid ? toPaisa(r.amount) : 0);
+      if(paidP > 0) list.push({
+        id: uid(), kind:'payment', bucket:'elec',
+        date: (isNew ? (r.paymentDate || r.readingDate) : r.date) || mk+'-01',
+        amountP: paidP, mKey: mk, note:'', label:'Electricity payment received',
+        updatedAt: stamp, deleted:false, deletedAt:null
+      });
+    });
+  });
+  return out;
+}
+function readLegacyBlob(){
+  const raw = {};
+  let found = false;
+  ['houses','tenants','payments','electricity','settlements','settings'].forEach(k => {
+    const s = localStorage.getItem(LEGACY_NS+k);
+    if(s){ found = true; try{ raw[k] = JSON.parse(s); }catch(e){} }
+  });
+  return found ? raw : null;
+}
+/* Accepts a backup file from either version and returns v2-shaped data. */
+function normalizeSnapshot(data){
+  if(!data || typeof data !== 'object') return null;
+  const looksV2 = data.schema === SCHEMA || data.entries !== undefined || data.readings !== undefined;
+  if(looksV2){
+    return {
+      houses: data.houses||[], tenants: data.tenants||[],
+      entries: data.entries||{}, readings: data.readings||{},
+      settings: Object.assign({ elecRateP:1200, schema:SCHEMA }, data.settings||{})
+    };
+  }
+  if(Array.isArray(data.tenants)) return migrateLegacy(data);
+  return null;
+}
+
+async function loadAll(){
+  let hasNew = false;
+  STORE_KEYS.forEach(k => { if(localStorage.getItem(NS+k) !== null) hasNew = true; });
+  if(hasNew){
+    STORE_KEYS.forEach(k => {
+      try{
+        const raw = localStorage.getItem(NS+k);
+        state[k] = raw ? JSON.parse(raw) : defaultsFor(k);
+      }catch(e){ state[k] = defaultsFor(k); }
+    });
+  } else {
+    const legacy = readLegacyBlob();
+    if(legacy){
+      const migrated = migrateLegacy(legacy);
+      STORE_KEYS.forEach(k => { state[k] = migrated[k]; });
+      state.notice = 'migrated';
+    }
+  }
+  ensureShape();
+  const t = bsToday();
+  state.month = { y: t.y, m: t.m };
+  state.loaded = true;
+  state.google.fileId = localStorage.getItem(NS+'drive_fileId') || null;
+  if(state.notice === 'migrated') await saveAll();
+  render();
+  if(GOOGLE_CLIENT_ID){
+    waitForGsi().then(()=>{ initGoogleAuth(); return ensureFreshToken(); }).then(ok=>{ if(ok) syncFromDrive(); });
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && state.google.signedIn) syncFromDrive(); });
+  }
+}
+/* Fills in anything a hand-edited or partial file might be missing. */
+function ensureShape(){
+  if(!Array.isArray(state.houses)) state.houses = [];
+  if(!Array.isArray(state.tenants)) state.tenants = [];
+  if(!state.entries || typeof state.entries !== 'object') state.entries = {};
+  if(!state.readings || typeof state.readings !== 'object') state.readings = {};
+  if(!state.settings || typeof state.settings !== 'object') state.settings = defaultsFor('settings');
+  if(state.settings.elecRateP === undefined) state.settings.elecRateP = toPaisa(state.settings.elecRate || 12);
+  state.settings.schema = SCHEMA;
+  state.houses.forEach(h => { if(h.deleted === undefined) h.deleted = false; if(!h.updatedAt) h.updatedAt = now(); });
+  state.tenants.forEach(t => {
+    if(t.deleted === undefined) t.deleted = false;
+    if(!t.updatedAt) t.updatedAt = now();
+    if(!Array.isArray(t.rooms) || !t.rooms.length) t.rooms = [{id:uid(), label:t.unit||'Room', rentP:Number(t.rentP||0), since:t.leaseStart||null}];
+    if(!Array.isArray(t.rentHistory)) t.rentHistory = [];
+    if(!t.anchorDate) t.anchorDate = t.leaseStart || todayStr();
+    if(t.anchorBalanceP === undefined) t.anchorBalanceP = 0;
+    syncTenantFromRooms(t);
+    if(!state.entries[t.id]) state.entries[t.id] = [];
+    if(!state.readings[t.id]) state.readings[t.id] = {};
+  });
+}
+function syncTenantFromRooms(t){
+  t.rentP = t.rooms.reduce((s,r)=>s+Number(r.rentP||0), 0);
+  t.unit = t.rooms.map(r=>r.label).filter(Boolean).join(' + ') || t.unit || '';
+}
+function liveTenants(){ return state.tenants.filter(t => !t.deleted); }
+function liveHouses(){ return state.houses.filter(h => !h.deleted); }
+function tenantById(id){ return state.tenants.find(t => t.id === id); }
+function houseName(id){ const h = state.houses.find(x=>x.id===id); return h ? h.name : 'Unassigned'; }
+
+/* ================================================================
+   THE LEDGER IS THE ONLY BALANCE ENGINE.
+   Nothing else in this file adds or subtracts money. Every screen —
+   the dashboard cards, the row balances, the overview, the printed
+   bill, the reminder text — reads what buildLedger() produced.
+   ================================================================ */
+
+let _ledgerCache = new Map();
+function invalidateLedgers(){ _ledgerCache = new Map(); }
+function ledger(t){
+  if(!_ledgerCache.has(t.id)) _ledgerCache.set(t.id, buildLedger(t));
+  return _ledgerCache.get(t.id);
+}
+
+function rentPForMonth(t, mKey){
+  const hist = (t.rentHistory||[]).slice().sort((a,b)=> a.mKey < b.mKey ? -1 : a.mKey > b.mKey ? 1 : 0);
+  if(hist.length === 0) return Number(t.rentP||0);
+  let eff = Number(hist[0].oldRentP||0);
+  for(const h of hist){ if(mKey >= h.mKey) eff = Number(h.newRentP||0); else break; }
+  return eff;
+}
+/* Clamped to the real length of that BS month, so a due day of 32 never
+   produces a date like "32 Bhadra" in a 30-day month. */
+function dueDateFor(t, y, m){
+  const d = Math.min(Math.max(1, Number(t.dueDay||5)), bsMonthLen(y,m));
+  return y+"-"+pad2(m)+"-"+pad2(d);
+}
+function ledgerStartKey(t){ return String(t.anchorDate||todayStr()).slice(0,7); }
+
+function entryLabel(en){
+  if(en.label) return en.label;
+  if(en.kind === 'charge') return en.bucket==='elec' ? 'Electricity charge' : 'Additional charge';
+  if(en.kind === 'credit') return en.bucket==='elec' ? 'Electricity credit' : 'Credit';
+  return en.bucket==='elec' ? 'Electricity payment received' : 'Rent payment received';
+}
+
+function buildLedger(t){
+  const E = [];
+  const anchorDate = t.anchorDate || todayStr();
+  const anchorP = Number(t.anchorBalanceP||0);
+
+  /* One anchor line replaces the old opening balance AND the settlement
+     machinery: "as of this date the balance was X". Everything before it is
+     considered closed, so rent is never charged for months that predate the
+     day this tenant's records were opened. A negative anchor means the tenant
+     was in credit. */
+  E.push({
+    key:'anchor', date: anchorDate, bucket:'rent', kind:'anchor',
+    label:'Opening balance', note: t.anchorNote||'',
+    debitP: Math.max(0, anchorP), creditP: Math.max(0, -anchorP),
+    fixed:true, removed:false
+  });
+
+  const today = bsToday();
+  const todaySort = bsSortKey(bsObjToStr(today));
+  const anchorSort = bsSortKey(anchorDate);
+  const leaseSort = t.leaseStart ? bsSortKey(t.leaseStart) : 0;
+  const [ay, am] = String(anchorDate).split('-').map(Number);
+  const endNum = bsMonthKeyNum(today.y, today.m);
+  for(let n = bsMonthKeyNum(ay, am); n <= endNum; n++){
+    const y = Math.floor((n-1)/12), m = ((n-1)%12)+1;
+    const dd = dueDateFor(t, y, m), ds = bsSortKey(dd);
+    if(ds <= anchorSort) continue;   // covered by the anchor balance
+    if(ds < leaseSort) continue;     // before the tenancy began
+    if(ds > todaySort) continue;     // not due yet
+    const mk = bsKeyStr(y, m);
+    const rp = rentPForMonth(t, mk);
+    if(rp > 0) E.push({
+      key:'rent:'+mk, date: dd, mKey: mk, bucket:'rent', kind:'rent_due',
+      label:'Rent due — '+BS_MONTHS[m-1]+' '+y, note:'',
+      debitP: rp, creditP: 0, fixed:true, removed:false
+    });
+  }
+
+  /* An electricity bill is DERIVED from its meter reading: units x rate.
+     No stored total, no stored carry-forward. Whatever was owed from earlier
+     bills is simply still sitting in the running balance below. */
+  const rd = state.readings[t.id] || {};
+  Object.keys(rd).sort().forEach(mk => {
+    const r = rd[mk]; if(!r) return;
+    const amt = Math.max(0, Number(r.units||0)) * Number(r.rateP||0);
+    if(amt <= 0) return;
+    const mm = Number(mk.split('-')[1]);
+    E.push({
+      key:'read:'+mk, date: r.readingDate || mk+'-01', mKey: mk, bucket:'elec', kind:'elec_bill',
+      label:'Electricity — '+BS_MONTHS[mm-1]+' '+mk.split('-')[0]+' ('+(r.units||0)+' units)',
+      note: r.note||'', debitP: amt, creditP: 0,
+      refType:'reading', refKey: mk, removed: !!r.deleted
+    });
+  });
+
+  (state.entries[t.id]||[]).forEach(en => {
+    const isDebit = en.kind === 'charge';
+    E.push({
+      key:'entry:'+en.id, date: en.date, mKey: en.mKey||null, bucket: en.bucket||'rent', kind: en.kind,
+      label: entryLabel(en), note: en.note||'',
+      debitP: isDebit ? Number(en.amountP||0) : 0,
+      creditP: isDebit ? 0 : Number(en.amountP||0),
+      refType:'entry', refKey: en.id, removed: !!en.deleted
+    });
+  });
+
+  E.sort((a,b) => {
+    const d = bsSortKey(a.date) - bsSortKey(b.date);
+    if(d !== 0) return d;
+    return (b.debitP>0?1:0) - (a.debitP>0?1:0); // a charge lands before a same-day payment
+  });
+
+  let bal = 0, rentBal = 0, elecBal = 0;
+  const byMonth = {};
+  E.forEach(e => {
+    e.balanceBeforeP = bal;
+    e.bucketBalanceBeforeP = e.bucket === 'elec' ? elecBal : rentBal;
+    if(e.removed){ e.balanceP = bal; e.bucketBalanceP = e.bucketBalanceBeforeP; return; }
+    const delta = e.debitP - e.creditP;
+    bal += delta;
+    if(e.bucket === 'elec') elecBal += delta; else rentBal += delta;
+    e.balanceP = bal;
+    e.bucketBalanceP = e.bucket === 'elec' ? elecBal : rentBal;
+    if(e.mKey){
+      const b = byMonth[e.mKey] || (byMonth[e.mKey] = {rentDueP:0, rentPaidP:0, elecDueP:0, elecPaidP:0});
+      if(e.bucket === 'elec'){ b.elecDueP += e.debitP; b.elecPaidP += e.creditP; }
+      else { b.rentDueP += e.debitP; b.rentPaidP += e.creditP; }
+    }
+  });
+  return { entries: E, totalP: bal, rentP: rentBal, elecP: elecBal, byMonth };
+}
+
+/* ---------- Statuses (labels only — they read the ledger, they never do sums) ---------- */
+function rentStatus(t, mKey, L){
+  L = L || ledger(t);
+  const b = L.byMonth[mKey];
+  if(b && b.rentPaidP > 0 && b.rentPaidP >= b.rentDueP) return 'paid';
+  if(b && b.rentPaidP > 0) return 'partial';
+  if(mKey < ledgerStartKey(t)) return 'na';
+  if(!b || b.rentDueP === 0) return 'upcoming';
+  return 'overdue';
+}
+function rentStatusLabel(s){
+  return s==='paid'?'Paid':s==='partial'?'Partial':s==='overdue'?'Overdue':s==='upcoming'?'Not due yet':'—';
+}
+function elecStatus(t, mKey, L){
+  L = L || ledger(t);
+  const r = state.readings[t.id] && state.readings[t.id][mKey];
+  if(!r || r.deleted) return 'none';
+  const b = L.byMonth[mKey] || {elecDueP:0, elecPaidP:0};
+  if(b.elecDueP === 0) return 'paid';               // nothing consumed, nothing owed
+  if(b.elecPaidP >= b.elecDueP) return 'paid';
+  if(b.elecPaidP > 0) return 'partial';
+  return bsSortKey(r.readingDate||mKey+'-01') < bsSortKey(todayStr()) ? 'overdue' : 'pending';
+}
+function elecStatusLabel(s){
+  return s==='paid'?'Paid':s==='partial'?'Partial':s==='overdue'?'Overdue':s==='pending'?'Pending':'No reading';
+}
+
+/* A bill's "previous balance" is the electricity bucket balance immediately
+   before that bill's own line in the ledger — computed, never stored. */
+function elecBillView(t, mKey){
+  const L = ledger(t);
+  const r = state.readings[t.id] && state.readings[t.id][mKey];
+  if(!r || r.deleted) return null;
+  const bill = L.entries.find(e => e.key === 'read:'+mKey);
+  const previousP = bill ? bill.bucketBalanceBeforeP : L.elecP;
+  const chargeP = bill ? bill.debitP : 0;
+  const b = L.byMonth[mKey] || {elecPaidP:0};
+  const receivedP = b.elecPaidP || 0;
+  return {
+    reading: r, previousP, chargeP,
+    totalDueP: previousP + chargeP,
+    receivedP,
+    remainingP: previousP + chargeP - receivedP,
+    status: elecStatus(t, mKey, L)
+  };
+}
+
+function buildElecHistory(t){
+  const rd = state.readings[t.id] || {};
+  return Object.keys(rd).filter(k => !rd[k].deleted).sort().reverse();
+}
+
+/* ---------- Messages ---------- */
+function elecBillText(t, mKey){
+  const v = elecBillView(t, mKey);
+  if(!v) return '';
+  const lines = [
+    'Namaste '+t.name+', here is your electricity bill for '+fmtBsMonth(mKey)+':',
+    'Reading: '+v.reading.prevReading+' -> '+v.reading.currReading+' ('+v.reading.units+' units)',
+    'Rate: '+fmtNPR(v.reading.rateP)+'/unit',
+    "This period's charge: "+fmtNPR(v.chargeP),
+  ];
+  if(v.previousP > 0) lines.push('Previous electricity balance: '+fmtNPR(v.previousP));
+  else if(v.previousP < 0) lines.push('Credit on account: '+fmtNPR(-v.previousP));
+  lines.push('Total due: '+fmtNPR(v.totalDueP));
+  if(v.receivedP > 0) lines.push('Received: '+fmtNPR(v.receivedP));
+  lines.push('Balance remaining: '+fmtNPR(Math.max(0, v.remainingP)));
+  lines.push('Please arrange payment at your convenience. Dhanyabad.');
+  return lines.join('\n');
+}
+function reminderMessage(t, mKey){
+  const L = ledger(t);
+  const b = L.byMonth[mKey] || {rentDueP:0, rentPaidP:0};
+  const monthOwedP = Math.max(0, b.rentDueP - b.rentPaidP);
+  const parts = ['Namaste '+t.name+','];
+  if(monthOwedP > 0) parts.push(' rent for '+fmtBsMonth(mKey)+' ('+fmtNPR(monthOwedP)+') is still outstanding.');
+  else parts.push(' this is a reminder about your account.');
+  if(L.elecP > 0) parts.push(' Electricity balance: '+fmtNPR(L.elecP)+'.');
+  if(L.totalP > 0 && Math.abs(L.totalP - monthOwedP) > 0) parts.push(' Total balance on your account: '+fmtNPR(L.totalP)+'.');
+  parts.push(' Please arrange payment at your convenience. Dhanyabad.');
+  return parts.join('');
+}
+async function copyReminderText(tenantId){
+  const t = tenantById(tenantId);
+  const mKey = bsKeyStr(state.month.y, state.month.m);
+  try{ await navigator.clipboard.writeText(reminderMessage(t, mKey)); alert('Message copied.'); }
+  catch(e){ alert('Could not copy — your browser blocked clipboard access.'); }
+}
+function waLink(t, text){
+  const digits = (t.phone||'').replace(/\D/g,'');
+  return digits ? 'https://wa.me/'+digits+'?text='+encodeURIComponent(text) : null;
+}
+function shareElecBillWhatsApp(tenantId, mKey){
+  const t = tenantById(tenantId);
+  const text = elecBillText(t, mKey);
+  if(!text){ alert('No electricity reading logged for this period yet.'); return; }
+  const link = waLink(t, text);
+  if(!link){ alert('No phone number on file for this tenant — add one from Edit profile first.'); return; }
+  window.open(link, '_blank');
+}
+
+/* ---------- Dashboard figures (read straight off the ledger) ---------- */
+function computeStats(mKey){
+  let rentCollectedP = 0, elecCollectedP = 0, pendingCount = 0, outstandingP = 0;
+  liveTenants().forEach(t => {
+    const L = ledger(t);
+    const b = L.byMonth[mKey];
+    if(b){ rentCollectedP += b.rentPaidP; elecCollectedP += b.elecPaidP; }
+    const rs = rentStatus(t, mKey, L);
+    if(rs === 'overdue' || rs === 'partial') pendingCount++;
+    outstandingP += L.totalP;
+  });
+  return { rentCollectedP, elecCollectedP, pendingCount, outstandingP };
+}
+
+/* ---------- Printing ---------- */
+function openPrintWindow(title, bodyHtml){
+  const win = window.open('', '_blank');
+  if(!win){ alert('Your browser blocked the print window — please allow pop-ups for this page and try again.'); return null; }
+  win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'+
+    '<title>'+escapeHtml(title)+'</title>'+
+    '<meta name="viewport" content="width=device-width, initial-scale=1">'+
+    '<style>'+
+    'body{font-family:-apple-system,Roboto,Arial,sans-serif;padding:22px;color:#222;max-width:640px;margin:0 auto;}'+
+    'h1{font-size:19px;margin:0 0 2px;} .sub{color:#666;font-size:12.5px;margin-bottom:16px;}'+
+    'table{width:100%;border-collapse:collapse;font-size:12.5px;}'+
+    'th,td{padding:7px 8px;border-bottom:1px solid #ddd;text-align:left;} th{background:#f2f2f2;}'+
+    '.num{text-align:right;white-space:nowrap;} .tot td{font-size:15px;border-top:2px solid #333;border-bottom:none;padding-top:12px;font-weight:700;}'+
+    '.status{display:inline-block;padding:5px 12px;border-radius:4px;font-weight:700;font-size:12.5px;margin-top:6px;}'+
+    '.wa-btn{display:inline-block;margin-top:16px;padding:10px 18px;background:#25D366;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;font-size:13.5px;}'+
+    '@media print{.wa-btn{display:none;}}'+
+    '</style></head><body>'+bodyHtml+'</body></html>');
+  win.document.close();
+  win.focus();
+  setTimeout(()=>{ try{ win.print(); }catch(e){} }, 300);
+  return win;
+}
+function printLedgerFor(tenantId){
+  const t = tenantById(tenantId);
+  const L = ledger(t);
+  const rows = L.entries.filter(e => !e.removed).map(e => '<tr>'+
+    '<td>'+fmtBs(e.date)+'</td>'+
+    '<td>'+escapeHtml(e.label)+(e.note ? ' — '+escapeHtml(e.note) : '')+'</td>'+
+    '<td class="num">'+(e.debitP ? fmtNPR(e.debitP) : '')+'</td>'+
+    '<td class="num">'+(e.creditP ? fmtNPR(e.creditP) : '')+'</td>'+
+    '<td class="num">'+fmtNPR(e.balanceP)+'</td></tr>').join('');
+  openPrintWindow('Rent ledger — '+t.name,
+    '<h1>'+escapeHtml(t.name)+'</h1>'+
+    '<div class="sub">'+escapeHtml(t.unit||'')+' · '+escapeHtml(houseName(t.houseId))+' · ledger opens '+fmtBs(t.anchorDate)+' · generated '+fmtBs(todayStr())+'</div>'+
+    '<table><thead><tr><th>Date</th><th>Particulars</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance</th></tr></thead>'+
+    '<tbody>'+rows+'</tbody></table>'+
+    '<p style="font-size:12.5px;margin-top:14px;"><b>Closing balance: '+fmtNPR(L.totalP)+'</b>'+
+    (L.totalP < 0 ? ' (in credit)' : '')+'</p>');
+}
+function printElectricityBill(tenantId, mKey){
+  const t = tenantById(tenantId);
+  const v = elecBillView(t, mKey);
+  if(!v){ alert('No electricity reading logged for this period yet.'); return; }
+  const label = v.status==='paid' ? 'PAID' : v.status==='partial' ? 'PARTIALLY PAID' : 'PAYMENT DUE';
+  const bg = v.status==='paid' ? '#e3f6e8' : v.status==='partial' ? '#fff3d6' : '#fde3e1';
+  const fg = v.status==='paid' ? '#1b7a3c' : v.status==='partial' ? '#8a6100' : '#a3251d';
+  const link = waLink(t, elecBillText(t, mKey));
+  openPrintWindow('Electricity bill — '+t.name,
+    '<h1>Electricity bill — '+escapeHtml(t.name)+'</h1>'+
+    '<div class="sub">'+escapeHtml(t.unit||'')+' · '+escapeHtml(houseName(t.houseId))+' · '+fmtBsMonth(mKey)+' · reading date '+fmtBs(v.reading.readingDate)+'</div>'+
+    '<table>'+
+    '<tr><td>Previous reading</td><td class="num">'+v.reading.prevReading+'</td></tr>'+
+    '<tr><td>Current reading</td><td class="num">'+v.reading.currReading+'</td></tr>'+
+    '<tr><td>Units consumed</td><td class="num">'+v.reading.units+'</td></tr>'+
+    '<tr><td>Rate per unit</td><td class="num">'+fmtNPR(v.reading.rateP)+'</td></tr>'+
+    "<tr><td>This period's charge</td><td class=\"num\">"+fmtNPR(v.chargeP)+'</td></tr>'+
+    (v.previousP !== 0 ? '<tr><td>'+(v.previousP>0?'Previous electricity balance':'Credit on account')+'</td><td class="num">'+fmtNPR(Math.abs(v.previousP))+'</td></tr>' : '')+
+    '<tr class="tot"><td>Total due</td><td class="num">'+fmtNPR(v.totalDueP)+'</td></tr>'+
+    '<tr><td>Amount received</td><td class="num">'+fmtNPR(v.receivedP)+'</td></tr>'+
+    '<tr><td>Balance remaining</td><td class="num">'+fmtNPR(Math.max(0, v.remainingP))+'</td></tr>'+
+    '</table>'+
+    '<span class="status" style="background:'+bg+';color:'+fg+';">'+label+'</span>'+
+    (v.reading.note ? '<div class="sub" style="margin-top:14px;">Note: '+escapeHtml(v.reading.note)+'</div>' : '')+
+    '<div class="sub" style="margin-top:20px;">Generated '+fmtBs(todayStr())+'</div>'+
+    (link ? '<div><a class="wa-btn" href="'+link+'" target="_blank" rel="noopener">Share via WhatsApp</a></div>'
+          : '<div class="sub" style="margin-top:16px;">No phone on file — add one to the profile to enable WhatsApp sharing.</div>'));
+}
+
+/* ---------- Render ---------- */
+function openModal(modal){ state.modal = modal; if(modal && modal.type==='detail' && !modal.keepTab) state.detailTab='overview'; render(); }
+function closeModal(){ state.modal = null; render(); }
+function setDetailTab(tab){ state.detailTab = tab; render(); }
+function onSearch(v){ state.search = v; render(); }
+function onHouseFilter(v){ state.houseFilter = v; render(); }
+function dismissNotice(){ state.notice = null; render(); }
+function toggleRemoved(){ state.showRemoved = !state.showRemoved; render(); }
+function changeMonth(delta){
+  const n = bsMonthKeyNum(state.month.y, state.month.m) + delta;
+  const y = Math.floor((n-1)/12), m = ((n-1)%12)+1;
+  if(y < BS_MIN_YEAR || y > BS_MAX_YEAR) return;
+  state.month = {y,m};
+  render();
+}
+
+/* Rebuilding the whole page on every keystroke used to blow away the focused
+   input, so the search box only ever accepted one character. Remember where the
+   caret was and put it back. */
+function captureFocus(){
+  const el = document.activeElement;
+  if(!el || !el.id) return null;
+  const f = { id: el.id };
+  try{ f.start = el.selectionStart; f.end = el.selectionEnd; }catch(e){}
+  return f;
+}
+function restoreFocus(f){
+  if(!f) return;
+  const el = document.getElementById(f.id);
+  if(!el) return;
+  try{
+    el.focus();
+    if(f.start != null && el.setSelectionRange) el.setSelectionRange(f.start, f.end);
+  }catch(e){}
+}
+
+function render(){
+  invalidateLedgers();
+  const app = document.getElementById('app');
+  if(!state.loaded){ app.innerHTML = '<div class="empty">Loading ledger…</div>'; return; }
+  const focus = captureFocus();
+  const mKey = bsKeyStr(state.month.y, state.month.m);
+  const stats = computeStats(mKey);
+  const tenants = liveTenants();
+  const q = state.search.toLowerCase();
+
+  const filtered = tenants
+    .filter(t => (t.name||'').toLowerCase().includes(q) || (t.unit||'').toLowerCase().includes(q))
+    .filter(t => !state.houseFilter || t.houseId === state.houseFilter)
+    .sort((a,b)=> (a.name||'').localeCompare(b.name||''));
+
+  const archivedCount = state.tenants.filter(t=>t.deleted).length + state.houses.filter(h=>h.deleted).length;
+
+  let html = `
+    <header>
+      <div>
+        <h1>Rent Ledger</h1>
+        <div class="sub">${tenants.length} tenant${tenants.length===1?'':'s'} on record${archivedCount?` · ${archivedCount} archived`:''}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div class="month-nav">
+          <button onclick="changeMonth(-1)" title="Previous month">‹</button>
+          <span class="mlabel">${BS_MONTHS[state.month.m-1]} ${state.month.y}</span>
+          <button onclick="changeMonth(1)" title="Next month">›</button>
+        </div>
+        <button class="gear" title="Houses" onclick="openModal({type:'houses'})">🏠</button>
+        <button class="gear" title="Archive" onclick="openModal({type:'archive'})">🗄</button>
+        <button class="gear" title="Settings &amp; backup" onclick="openModal({type:'settings'})">⚙</button>
+      </div>
+    </header>
+  `;
+
+  if(state.notice === 'migrated'){
+    html += `<div class="banner">
+      <button class="bx" title="Dismiss" onclick="dismissNotice()">✕</button>
+      <b>Your old data has been brought across</b>
+      Balances now come from one running ledger instead of several separate calculations, and every tenant has an
+      <b style="display:inline">opening balance date</b> — "as of this date, the balance was X". Existing tenants were
+      given their lease start date, which means rent is charged for every month since then.
+      If someone was already paid up when you started using this app, open them and set the opening date to when you
+      actually began tracking. Your previous version's data is untouched and can still be exported from it.
+    </div>`;
+  }
+
+  html += `
+    <div class="stamps">
+      <div class="stamp paid"><div class="label">Rent collected</div><div class="scope">${BS_MONTHS[state.month.m-1]} ${state.month.y}</div><div class="value">${fmtNPR(stats.rentCollectedP)}</div></div>
+      <div class="stamp elec"><div class="label">Electricity collected</div><div class="scope">${BS_MONTHS[state.month.m-1]} ${state.month.y}</div><div class="value">${fmtNPR(stats.elecCollectedP)}</div></div>
+      <div class="stamp pending"><div class="label">Rent unpaid</div><div class="scope">${BS_MONTHS[state.month.m-1]} ${state.month.y}</div><div class="value">${stats.pendingCount} tenant${stats.pendingCount===1?'':'s'}</div></div>
+      <div class="stamp due"><div class="label">Total outstanding</div><div class="scope">all months, all tenants</div><div class="value">${fmtNPR(stats.outstandingP)}</div></div>
+    </div>
+
+    <div class="toolbar">
+      <input id="search-box" class="search" placeholder="Search by name or unit…" value="${escapeAttr(state.search)}" oninput="onSearch(this.value)">
+      <select id="house-filter" onchange="onHouseFilter(this.value)">
+        <option value="">All houses</option>
+        ${liveHouses().map(h=>`<option value="${escapeAttr(h.id)}" ${state.houseFilter===h.id?'selected':''}>${escapeHtml(h.name)}</option>`).join('')}
+      </select>
+      <button class="btn" onclick="openModal({type:'add'})">+ Add tenant</button>
+      <button class="btn ghost" onclick="openModal({type:'reminders'})">📨 Reminders</button>
+    </div>
+
+    <div class="ledger">
+  `;
+
+  if(filtered.length === 0){
+    html += `<div class="empty"><b>${tenants.length===0 ? "No tenants yet" : "No matches"}</b>${tenants.length===0 ? "Add your first tenant to start the ledger." : "Try a different search."}</div>`;
+  } else {
+    html += `<div class="row head"><div></div><div>Name</div><div>Rent</div><div>Electricity</div><div>Balance</div><div></div></div>`;
+    filtered.forEach((t, i) => {
+      const L = ledger(t);
+      const rs = rentStatus(t, mKey, L);
+      const es = elecStatus(t, mKey, L);
+      const bal = L.totalP;
+      const link = (t.phone && (rs==='overdue' || rs==='partial' || L.totalP > 0)) ? waLink(t, reminderMessage(t, mKey)) : null;
+      html += `
+        <div class="row">
+          <div class="idx">${i+1}</div>
+          <div class="name" onclick="openModal({type:'detail', tenantId:'${escapeAttr(t.id)}'})">${escapeHtml(t.name)}<div class="unit">${escapeHtml(t.unit||'—')} · ${escapeHtml(houseName(t.houseId))}</div></div>
+          <div><span class="chip ${rs}">${rentStatusLabel(rs)}</span></div>
+          <div><span class="chip ${es}">${elecStatusLabel(es)}</span></div>
+          <div class="due ${bal>0?'':(bal<0?'credit':'zero')}">${bal>0 ? fmtNPR(bal) : (bal<0 ? fmtNPR(-bal)+' cr' : '—')}</div>
+          <div class="actions">
+            ${link ? `<a class="btn small wa" href="${link}" target="_blank" rel="noopener">Remind</a>` : ''}
+            <button class="icon-btn" title="Archive tenant" onclick="archiveTenant('${escapeAttr(t.id)}')">🗄</button>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  html += `</div><footer>
+    Cash rent &amp; electricity tracker · dates in Bikram Sambat · amounts held as whole paisa<br>
+    Data stays in this browser on this device. <a href="#" onclick="openModal({type:'settings'});return false;" style="color:inherit;">Export a backup</a> to move it anywhere else.
+  </footer>`;
+
+  app.innerHTML = html;
+  if(state.modal) renderModal();
+  restoreFocus(focus);
+}
+
+function renderModal(){
+  const app = document.getElementById('app');
+  const m = state.modal;
+  let inner = '';
+  const mKey = bsKeyStr(state.month.y, state.month.m);
+
+  /* ---------- add / edit tenant ---------- */
+  if(m.type === 'add' || m.type === 'edit'){
+    const isEdit = m.type === 'edit';
+    const t = isEdit ? tenantById(m.tenantId) : {
+      name:'', phone:'', houseId: state.houseFilter||null, dueDay:5, depositP:0,
+      leaseStart: todayStr(), anchorDate: todayStr(), anchorBalanceP:0, anchorNote:'',
+      rooms:[{id:'', label:'', rentP:0}]
+    };
+    const rooms = (t.rooms && t.rooms.length) ? t.rooms : [{id:'', label:'', rentP:0}];
+    const roomsHtml = rooms.map(r => `
+      <div class="room-row" data-id="${escapeAttr(r.id||'')}" style="display:flex;gap:8px;margin-bottom:6px;align-items:center;">
+        <input class="room-label" style="flex:1;" placeholder="Room / unit name" value="${escapeAttr(r.label||'')}">
+        <input class="room-rent" type="number" step="0.01" style="width:110px;" value="${paisaToInput(r.rentP||0)}" oninput="recomputeRoomsTotal()">
+        <button type="button" class="icon-btn" title="Remove room" onclick="this.closest('.room-row').remove(); recomputeRoomsTotal();">✕</button>
+      </div>`).join('');
+    const totalP = rooms.reduce((s,r)=>s+Number(r.rentP||0),0);
+
+    inner = `
+      <h2>${isEdit ? 'Edit tenant' : 'Add tenant'}</h2>
+      <div class="field"><label>Name</label><input id="f-name" value="${escapeAttr(t.name)}" placeholder="Tenant name"></div>
+      <div class="field two">
+        <div><label>House</label><select id="f-house">
+          <option value="">Unassigned</option>
+          ${liveHouses().map(h=>`<option value="${escapeAttr(h.id)}" ${t.houseId===h.id?'selected':''}>${escapeHtml(h.name)}</option>`).join('')}
+        </select></div>
+        <div><label>Phone</label><input id="f-phone" value="${escapeAttr(t.phone)}" placeholder="98xxxxxxxx"></div>
+      </div>
+      <div class="field">
+        <label>Rooms / units</label>
+        <div id="rooms-editor">${roomsHtml}</div>
+        <button type="button" class="btn small ghost" onclick="addRoomRow()">+ Add room</button>
+        <div class="calc-line" style="margin-top:8px;">Total monthly rent: <b id="rooms-total">${fmtNPR(totalP)}</b></div>
+      </div>
+      ${isEdit ? `
+      <div class="field">
+        <label>If the rent above changed, apply it from<span class="hint">Past months keep the old rent. Back-date this if the change was agreed earlier.</span></label>
+        ${bsMonthInputHTML('f-eff', mKey)}
+      </div>
+      <div class="field"><label>Reason for the change (optional)</label><input id="f-rentnote" placeholder="e.g. added Shutter-5, annual increase"></div>` : ''}
+      <div class="field two">
+        <div><label>Due day (BS)</label><input id="f-due" type="number" min="1" max="32" value="${t.dueDay||5}"></div>
+        <div><label>Deposit held</label>${moneyInputHTML('f-deposit', t.depositP||0)}</div>
+      </div>
+      <div class="field"><label>Lease start date (BS)<span class="hint">For your records. Rent is only charged from the opening balance date below.</span></label>${bsDateInputHTML('f-lease', t.leaseStart)}</div>
+      ${isEdit ? `
+        <div class="anchor-box">
+          <b>Ledger opens ${fmtBs(t.anchorDate)}</b> with a balance of <b>${fmtNPR(t.anchorBalanceP||0)}</b>.
+          Rent is charged for every month after that date. Change it from the Overview tab.
+        </div>` : `
+        <div class="field"><label>Opening balance date (BS)<span class="hint">The day you start tracking this tenant. Nothing before it is counted.</span></label>${bsDateInputHTML('f-anchordate', t.anchorDate)}</div>
+        <div class="field"><label>Balance owed on that date<span class="hint">0 if they were square. Negative if they were in credit.</span></label>${moneyInputHTML('f-anchoramt', 0)}</div>`}
+      <div class="row-actions">
+        <button class="btn ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn" onclick="saveTenantForm('${m.type}','${escapeAttr(m.tenantId||'')}')">Save</button>
+      </div>
+    `;
+  }
+
+  /* ---------- opening balance (the anchor) ---------- */
+  if(m.type === 'anchor'){
+    const t = tenantById(m.tenantId);
+    const L = ledger(t);
+    inner = `
+      <h2>Opening balance — ${escapeHtml(t.name)}</h2>
+      <div class="msub">
+        One statement replaces the old opening-balance and settlement fields: <b>as of this date, the balance was X</b>.
+        The ledger starts here. Nothing before this date is charged, and rent is added for each month after it.
+      </div>
+      <div class="field"><label>As of this date (BS)</label>${bsDateInputHTML('f-adate', t.anchorDate)}</div>
+      <div class="field"><label>The balance was<span class="hint">Positive = they owed you. Negative = they were in credit. 0 = square.</span></label>${moneyInputHTML('f-aamt', t.anchorBalanceP||0)}</div>
+      <div class="field"><label>Note (optional)</label><input id="f-anote" value="${escapeAttr(t.anchorNote||'')}" placeholder="e.g. agreed on handover"></div>
+      <div class="calc-line">Current closing balance: <b>${fmtNPR(L.totalP)}</b></div>
+      <div class="msub">To record money received against old dues, don't change this figure — log it as a payment instead, so both sides show on the ledger.</div>
+      <div class="row-actions">
+        <button class="btn ghost" onclick="openModal({type:'detail', tenantId:'${escapeAttr(t.id)}'})">Back</button>
+        <button class="btn" onclick="saveAnchor('${escapeAttr(t.id)}')">Save</button>
+      </div>
+    `;
+  }
+
+  /* ---------- rent payment ---------- */
+  if(m.type === 'pay'){
+    const t = tenantById(m.tenantId);
+    const L = ledger(t);
+    const b = L.byMonth[mKey] || {rentDueP:0, rentPaidP:0};
+    const outstandingP = Math.max(0, b.rentDueP - b.rentPaidP);
+    inner = `
+      <h2>Log rent payment — ${escapeHtml(t.name)}</h2>
+      <div class="msub">For ${BS_MONTHS[state.month.m-1]} ${state.month.y}. Part payments are fine — log each one as it arrives and they add up.</div>
+      <div class="calc-line">
+        Charged this month: <b>${fmtNPR(b.rentDueP)}</b> · already received: <b>${fmtNPR(b.rentPaidP)}</b><br>
+        Still outstanding for this month: <b>${fmtNPR(outstandingP)}</b>
+      </div>
+      <div class="field"><label>Amount received</label>${moneyInputHTML('f-amount', outstandingP > 0 ? outstandingP : rentPForMonth(t, mKey))}</div>
+      <div class="field"><label>Date received (BS)</label>${bsDateInputHTML('f-date', todayStr())}</div>
+      <div class="field"><label>Note (optional)</label><input id="f-note" placeholder="e.g. first instalment"></div>
+      <div class="row-actions">
+        <button class="btn ghost" onclick="openModal({type:'detail', tenantId:'${escapeAttr(t.id)}', keepTab:true})">Back</button>
+        <button class="btn" onclick="logRentPayment('${escapeAttr(t.id)}','${mKey}')">Record payment</button>
+      </div>
+    `;
+  }
+
+  /* ---------- electricity reading ---------- */
+  if(m.type === 'reading'){
+    const t = tenantById(m.tenantId);
+    const targetKey = m.mKey || mKey;
+    const existing = (state.readings[t.id]||{})[targetKey];
+    const prevRec = lastReadingBefore(t.id, targetKey);
+    const defaultPrev = existing ? existing.prevReading : (prevRec ? prevRec.currReading : 0);
+    const L = ledger(t);
+    inner = `
+      <h2>${existing ? 'Edit' : 'Log'} meter reading — ${escapeHtml(t.name)}</h2>
+      <div class="msub">
+        For ${fmtBsMonth(targetKey)}. The bill is worked out from the reading; any balance still owed from earlier
+        bills is already carried in the running ledger, so there is nothing to type in by hand and nothing to get out of step.
+      </div>
+      <div class="calc-line">Electricity balance before this bill: <b>${fmtNPR(elecBalanceBefore(t, targetKey))}</b></div>
+      <div class="field two">
+        <div><label>Previous reading${prevRec && !existing ? ` (from ${fmtBsMonth(prevRec.mKey)})` : ''}</label><input id="f-prev" type="number" value="${defaultPrev}" oninput="updateReadingCalc()"></div>
+        <div><label>Current reading</label><input id="f-curr" type="number" value="${existing ? existing.currReading : ''}" oninput="updateReadingCalc()"></div>
+      </div>
+      <div class="field"><label>Date of reading (BS)</label>${bsDateInputHTML('f-rdate', existing ? existing.readingDate : todayStr())}</div>
+      <div class="field"><label>Rate per unit</label>${moneyInputHTML('f-rate', existing ? existing.rateP : state.settings.elecRateP, 'oninput="updateReadingCalc()"')}</div>
+      <div class="calc-line" id="read-calc"></div>
+      <div class="field"><label>Note (optional)</label><input id="f-rnote" value="${escapeAttr(existing ? (existing.note||'') : '')}"></div>
+      <div class="msub">Payments are recorded separately, so editing a reading can never disturb money already received.</div>
+      <div class="row-actions">
+        <button class="btn ghost" onclick="openModal({type:'detail', tenantId:'${escapeAttr(t.id)}', keepTab:true})">Back</button>
+        <button class="btn" onclick="saveReading('${escapeAttr(t.id)}','${targetKey}')">Save reading</button>
+      </div>
+    `;
+  }
+
+  /* ---------- electricity payment ---------- */
+  if(m.type === 'elecpay'){
+    const t = tenantById(m.tenantId);
+    const targetKey = m.mKey || mKey;
+    const L = ledger(t);
+    inner = `
+      <h2>Electricity payment — ${escapeHtml(t.name)}</h2>
+      <div class="msub">Recorded against ${fmtBsMonth(targetKey)}. Part payments are fine.</div>
+      <div class="calc-line">Electricity balance outstanding: <b>${fmtNPR(L.elecP)}</b></div>
+      <div class="field"><label>Amount received</label>${moneyInputHTML('f-epamt', Math.max(0, L.elecP))}</div>
+      <div class="field"><label>Date received (BS)</label>${bsDateInputHTML('f-epdate', todayStr())}</div>
+      <div class="field"><label>Note (optional)</label><input id="f-epnote"></div>
+      <div class="row-actions">
+        <button class="btn ghost" onclick="openModal({type:'detail', tenantId:'${escapeAttr(t.id)}', keepTab:true})">Back</button>
+        <button class="btn" onclick="logElecPayment('${escapeAttr(t.id)}','${targetKey}')">Record payment</button>
+      </div>
+    `;
+  }
+
+  /* ---------- adjustment ---------- */
+  if(m.type === 'adjust'){
+    const t = tenantById(m.tenantId);
+    inner = `
+      <h2>Adjustment — ${escapeHtml(t.name)}</h2>
+      <div class="msub">A one-off charge or credit: a repair recharged to the tenant, a waiver, a correction. It appears on the ledger like anything else.</div>
+      <div class="field"><label>Type</label><select id="f-adjkind">
+        <option value="charge">Charge (increases what they owe)</option>
+        <option value="credit">Credit (reduces what they owe)</option>
+      </select></div>
+      <div class="field"><label>Applies to</label><select id="f-adjbucket">
+        <option value="rent">Rent</option>
+        <option value="elec">Electricity</option>
+      </select></div>
+      <div class="field"><label>Amount</label>${moneyInputHTML('f-adjamt', 0)}</div>
+      <div class="field"><label>Date (BS)</label>${bsDateInputHTML('f-adjdate', todayStr())}</div>
+      <div class="field"><label>Description</label><input id="f-adjnote" placeholder="e.g. tap repair recharged"></div>
+      <div class="row-actions">
+        <button class="btn ghost" onclick="openModal({type:'detail', tenantId:'${escapeAttr(t.id)}', keepTab:true})">Back</button>
+        <button class="btn" onclick="logAdjustment('${escapeAttr(t.id)}')">Record</button>
+      </div>
+    `;
+  }
+
+  /* ---------- tenant detail ---------- */
+  if(m.type === 'detail'){
+    const t = tenantById(m.tenantId);
+    if(!t){ closeModal(); return; }
+    const L = ledger(t);
+    inner = `
+      <h2>${escapeHtml(t.name)}</h2>
+      <div class="msub">${escapeHtml(t.unit||'—')} · ${escapeHtml(houseName(t.houseId))}${t.phone ? ' · '+escapeHtml(t.phone) : ''}</div>
+      <div class="tabs">
+        <button class="tab ${state.detailTab==='overview'?'active':''}" onclick="setDetailTab('overview')">Overview</button>
+        <button class="tab ${state.detailTab==='rent'?'active':''}" onclick="setDetailTab('rent')">Rent</button>
+        <button class="tab ${state.detailTab==='elec'?'active':''}" onclick="setDetailTab('elec')">Electricity</button>
+        <button class="tab ${state.detailTab==='history'?'active':''}" onclick="setDetailTab('history')">Ledger</button>
+      </div>
+    `;
+    if(state.detailTab === 'overview') inner += detailOverview(t, L);
+    if(state.detailTab === 'rent')     inner += detailRent(t, L, mKey);
+    if(state.detailTab === 'elec')     inner += detailElec(t, L, mKey);
+    if(state.detailTab === 'history')  inner += detailHistory(t, L);
+    inner += `<div class="row-actions"><button class="btn ghost" onclick="closeModal()">Close</button></div>`;
+  }
+
+  /* ---------- reminders ---------- */
+  if(m.type === 'reminders'){
+    const list = liveTenants().filter(t => {
+      const L = ledger(t);
+      const rs = rentStatus(t, mKey, L);
+      return rs === 'overdue' || rs === 'partial' || L.totalP > 0;
+    }).sort((a,b)=> (a.name||'').localeCompare(b.name||''));
+    inner = `
+      <h2>Send reminders</h2>
+      <div class="msub">${BS_MONTHS[state.month.m-1]} ${state.month.y} · ${list.length} tenant${list.length===1?'':'s'} with something outstanding. These open WhatsApp or SMS with the message pre-filled — nothing is sent automatically.</div>
+    `;
+    if(list.length === 0){
+      inner += `<div class="msub">Nothing outstanding.</div>`;
+    } else {
+      list.forEach(t => {
+        const L = ledger(t);
+        const text = reminderMessage(t, mKey);
+        const digits = (t.phone||'').replace(/\D/g,'');
+        inner += `
+          <div class="hist-item">
+            <div>${escapeHtml(t.name)}<div class="hist-note">${escapeHtml(t.unit||'')} · balance ${fmtNPR(L.totalP)}${!t.phone ? ' · no phone on file' : ''}</div></div>
+            <div class="actions" style="display:flex;gap:6px;align-items:center;">
+              ${digits ? `<a class="btn small wa" href="https://wa.me/${digits}?text=${encodeURIComponent(text)}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
+              ${digits ? `<a class="btn small ghost" href="sms:${digits}?&body=${encodeURIComponent(text)}">SMS</a>` : ''}
+              <button class="icon-btn" title="Copy message" onclick="copyReminderText('${escapeAttr(t.id)}')">⧉</button>
+            </div>
+          </div>`;
+      });
+    }
+    inner += `<div class="row-actions"><button class="btn ghost" onclick="closeModal()">Close</button></div>`;
+  }
+
+  /* ---------- houses ---------- */
+  if(m.type === 'houses'){
+    inner = `<h2>Houses</h2><div class="msub">Group tenants by building or property. Archiving a house leaves its tenants in place, just unassigned.</div>`;
+    const hs = liveHouses();
+    if(hs.length === 0) inner += `<div class="msub">No houses yet.</div>`;
+    else hs.forEach(h => {
+      const count = liveTenants().filter(t=>t.houseId===h.id).length;
+      inner += `
+        <div class="hist-item">
+          <div>${escapeHtml(h.name)}<div class="hist-note">${count} tenant${count===1?'':'s'}</div></div>
+          <div class="actions">
+            <button class="icon-btn" title="Rename" onclick="renameHouse('${escapeAttr(h.id)}')">✎</button>
+            <button class="icon-btn" title="Archive" onclick="archiveHouse('${escapeAttr(h.id)}')">🗄</button>
+          </div>
+        </div>`;
+    });
+    inner += `
+      <div class="field" style="margin-top:14px;"><label>Add a house</label><input id="f-newhouse" placeholder="e.g. Janakpur Chowk building"></div>
+      <div class="row-actions" style="justify-content:flex-start;"><button class="btn small" onclick="addHouseFromForm()">+ Add house</button></div>
+      <div class="row-actions"><button class="btn ghost" onclick="closeModal()">Close</button></div>`;
+  }
+
+  /* ---------- archive ---------- */
+  if(m.type === 'archive'){
+    const at = state.tenants.filter(t=>t.deleted);
+    const ah = state.houses.filter(h=>h.deleted);
+    inner = `
+      <h2>Archive</h2>
+      <div class="msub">
+        Nothing is destroyed when you remove a tenant or a house — it is archived, with its whole ledger intact, and can be
+        restored. Archived records also travel between devices, so something you removed on your phone stays removed on
+        your laptop instead of reappearing at the next sync.
+      </div>`;
+    if(!at.length && !ah.length) inner += `<div class="msub">Nothing archived.</div>`;
+    if(at.length){
+      inner += `<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:var(--ink-soft);margin:12px 0 6px;">Tenants</div>`;
+      at.forEach(t => {
+        const L = ledger(t);
+        inner += `
+          <div class="hist-item removed">
+            <div>${escapeHtml(t.name)}<div class="hist-note">${escapeHtml(t.unit||'')} · closing balance ${fmtNPR(L.totalP)}</div></div>
+            <div class="actions">
+              <button class="btn small ghost" onclick="restoreTenant('${escapeAttr(t.id)}')">Restore</button>
+              <button class="btn small danger" onclick="purgeTenant('${escapeAttr(t.id)}')">Delete for good</button>
+            </div>
+          </div>`;
+      });
+    }
+    if(ah.length){
+      inner += `<div style="font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:var(--ink-soft);margin:14px 0 6px;">Houses</div>`;
+      ah.forEach(h => {
+        inner += `
+          <div class="hist-item removed">
+            <div>${escapeHtml(h.name)}</div>
+            <div class="actions">
+              <button class="btn small ghost" onclick="restoreHouse('${escapeAttr(h.id)}')">Restore</button>
+              <button class="btn small danger" onclick="purgeHouse('${escapeAttr(h.id)}')">Delete for good</button>
+            </div>
+          </div>`;
+      });
+    }
+    inner += `<div class="row-actions"><button class="btn ghost" onclick="closeModal()">Close</button></div>`;
+  }
+
+  /* ---------- settings ---------- */
+  if(m.type === 'settings'){
+    inner = `
+      <h2>Settings &amp; backup</h2>
+      <div class="msub">Default rate used when logging a new reading. Existing readings keep the rate they were saved with.</div>
+      <div class="field"><label>Rate per unit</label>${moneyInputHTML('f-rate-setting', state.settings.elecRateP)}</div>
+      <div class="row-actions" style="justify-content:flex-start;"><button class="btn small" onclick="saveSettings()">Save rate</button></div>
+
+      <div style="border-top:1px solid var(--paper-line);margin-top:18px;padding-top:16px;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:var(--ink-soft);margin-bottom:8px;">Moving data between devices</div>
+        ${syncStatusHTML()}
+        <div class="row-actions" style="justify-content:flex-start;gap:8px;margin-top:12px;">
+          <button class="btn small" onclick="exportData()">⬇ Export backup (.json)</button>
+          <button class="btn small ghost" onclick="triggerImport()">⬆ Import backup</button>
+        </div>
+        <input type="file" id="import-file-input" accept="application/json,.json" style="display:none" onchange="importData(this)">
+      </div>
+      <div class="row-actions"><button class="btn ghost" onclick="closeModal()">Close</button></div>
+    `;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.onclick = (e) => { if(e.target === overlay) closeModal(); };
+  overlay.innerHTML = `<div class="modal">${inner}</div>`;
+  app.appendChild(overlay);
+  if(m.type === 'reading') updateReadingCalc();
+}
+
+/* ---------- Google Drive status, stated plainly ---------- */
+function syncStatusHTML(){
+  const isHttps = (typeof location !== 'undefined') && (location.protocol === 'https:' || location.hostname === 'localhost');
+  if(!GOOGLE_CLIENT_ID){
+    return `<div class="sync-status off">
+      <span class="st">⚠ Google Drive sync is switched off</span>
+      This build has no Google Client ID set, so <b>Export / Import below is the only way to move data between devices.</b>
+      Your tenants, payments and readings live in this one browser and nowhere else — take an export regularly.
+      <ol>
+        <li>Create an OAuth 2.0 Client ID (Web application) in Google Cloud Console.</li>
+        <li>Host this file at an <code>https://</code> address and add it as an Authorized JavaScript origin. Opening the file from disk will never work.</li>
+        <li>Paste the ID into <code>GOOGLE_CLIENT_ID</code> near the top of this file's code and reload.</li>
+      </ol>
+    </div>`;
+  }
+  if(!isHttps){
+    return `<div class="sync-status off">
+      <span class="st">⚠ Sync unavailable at this address</span>
+      A Client ID is set, but this page is not being served over <code>https://</code>, so Google sign-in will refuse to run.
+      Until it is hosted properly, <b>Export / Import below is the only way to move data between devices.</b>
+    </div>`;
+  }
+  if(state.google.signedIn){
+    return `<div class="sync-status on">
+      <span class="st">✓ Syncing with Google Drive</span>
+      Signed in as <b>${escapeHtml(state.google.email||'…')}</b>${state.google.lastSynced ? ' · last synced '+timeAgo(state.google.lastSynced) : (state.google.syncing ? ' · syncing…' : '')}.
+      The same data appears on every device signed in to this account.
+      <div class="row-actions" style="justify-content:flex-start;gap:8px;margin-top:10px;">
+        <button class="btn small ghost" ${state.google.syncing?'disabled':''} onclick="syncFromDrive()">↻ Sync now</button>
+        <button class="btn small ghost" onclick="signOutGoogle()">Sign out</button>
+      </div>
+    </div>`;
+  }
+  return `<div class="sync-status">
+    <span class="st">Google Drive sync is available but not connected</span>
+    Sign in and the same tenants, payments and readings appear on your phone and laptop. Until you do,
+    <b>Export / Import below is the only way to move data between devices.</b>
+    <div class="row-actions" style="justify-content:flex-start;margin-top:10px;">
+      <button class="btn small" onclick="signInGoogle()">Sign in with Google</button>
+    </div>
+  </div>`;
+}
+
+/* ---------- Detail tab bodies (all figures come from the ledger) ---------- */
+function detailOverview(t, L){
+  const monthsCharged = L.entries.filter(e => e.kind==='rent_due' && !e.removed).length;
+  return `
+    <div class="kv"><span>House</span><b>${escapeHtml(houseName(t.houseId))}</b></div>
+    ${(t.rooms||[]).map(r=>`<div class="kv sub"><span>${escapeHtml(r.label)}</span><b>${fmtNPR(r.rentP)}</b></div>`).join('')}
+    <div class="kv"><span>Monthly rent (total)</span><b>${fmtNPR(t.rentP)}</b></div>
+    <div class="kv"><span>Due day</span><b>${t.dueDay||5} of each BS month</b></div>
+    <div class="kv"><span>Deposit held</span><b>${fmtNPR(t.depositP||0)}</b></div>
+    <div class="kv"><span>Lease start</span><b>${fmtBs(t.leaseStart)}</b></div>
+    <div class="anchor-box">
+      <b>Ledger opens ${fmtBs(t.anchorDate)}</b> — balance on that date: <b>${fmtNPR(t.anchorBalanceP||0)}</b>.
+      ${t.anchorNote ? '<br><i>'+escapeHtml(t.anchorNote)+'</i>' : ''}
+      <br>Rent has been charged for <b>${monthsCharged}</b> month${monthsCharged===1?'':'s'} since then.
+      Nothing before that date is counted.
+    </div>
+    <div class="kv"><span>Rent balance</span><b>${fmtNPR(L.rentP)}</b></div>
+    <div class="kv"><span>Electricity balance</span><b>${fmtNPR(L.elecP)}</b></div>
+    <div class="kv big ${L.totalP<0?'credit':'due'}"><span>${L.totalP<0?'In credit':'Total balance'}</span><b>${fmtNPR(Math.abs(L.totalP))}</b></div>
+    <div class="row-actions" style="justify-content:flex-start;margin-top:10px;">
+      <button class="btn small ghost" onclick="openModal({type:'anchor', tenantId:'${escapeAttr(t.id)}'})">Set opening balance</button>
+      <button class="btn small ghost" onclick="openModal({type:'edit', tenantId:'${escapeAttr(t.id)}'})">Edit profile</button>
+      <button class="btn small ghost" onclick="openModal({type:'adjust', tenantId:'${escapeAttr(t.id)}'})">Adjustment</button>
+    </div>`;
+}
+
+function detailRent(t, L, mKey){
+  const rs = rentStatus(t, mKey, L);
+  const b = L.byMonth[mKey] || {rentDueP:0, rentPaidP:0};
+  const receipts = L.entries.filter(e => e.bucket==='rent' && e.mKey===mKey && e.creditP>0);
+  let out = `
+    <div class="kv"><span>${BS_MONTHS[state.month.m-1]} ${state.month.y}</span><span class="chip ${rs}">${rentStatusLabel(rs)}</span></div>
+    <div class="kv"><span>Charged</span><b>${fmtNPR(b.rentDueP)}</b></div>
+    <div class="kv"><span>Received</span><b>${fmtNPR(b.rentPaidP)}</b></div>
+    <div class="kv"><span>Outstanding for this month</span><b>${fmtNPR(Math.max(0, b.rentDueP-b.rentPaidP))}</b></div>`;
+  if(rs === 'na') out += `<div class="msub" style="margin-top:8px;">This month is before the ledger opened on ${fmtBs(t.anchorDate)}, so no rent was charged for it.</div>`;
+  if(rs === 'upcoming' && mKey >= ledgerStartKey(t)) out += `<div class="msub" style="margin-top:8px;">Rent for this month is charged on day ${t.dueDay||5}.</div>`;
+  out += `<div style="margin-top:14px;"><div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:var(--ink-soft);margin-bottom:6px;">Payments received this month</div>`;
+  if(receipts.length === 0) out += `<div class="msub">None yet.</div>`;
+  else receipts.forEach(e => {
+    out += `<div class="hist-item${e.removed?' removed':''}">
+      <div>${fmtNPR(e.creditP)}<div class="hist-note">${fmtBs(e.date)}${e.note ? ' · '+escapeHtml(e.note) : ''}</div></div>
+      <div class="actions">${e.refType==='entry' && !e.removed ? `<button class="icon-btn" title="Remove" onclick="removeEntry('${escapeAttr(t.id)}','${escapeAttr(e.refKey)}')">✕</button>` : ''}</div>
+    </div>`;
+  });
+  out += `</div>
+    <div class="row-actions" style="justify-content:flex-start;margin-top:12px;">
+      <button class="btn small" onclick="openModal({type:'pay', tenantId:'${escapeAttr(t.id)}'})">+ Log payment</button>
+    </div>`;
+  return out;
+}
+
+function detailElec(t, L, mKey){
+  const v = elecBillView(t, mKey);
+  let out = `<div class="row-actions" style="justify-content:flex-start;margin-bottom:12px;gap:8px;">
+      <button class="btn small" onclick="openNextReading('${escapeAttr(t.id)}')">⚡ Log next reading</button>
+      <button class="btn small ghost" onclick="openModal({type:'elecpay', tenantId:'${escapeAttr(t.id)}'})">+ Record payment</button>
+    </div>
+    <div class="kv"><span>Electricity balance (all bills)</span><b>${fmtNPR(L.elecP)}</b></div>`;
+  if(v){
+    out += `
+      <div class="kv"><span>Reading</span><b>${v.reading.prevReading} → ${v.reading.currReading} (${v.reading.units} units)</b></div>
+      <div class="kv"><span>Reading date</span><b>${fmtBs(v.reading.readingDate)}</b></div>
+      <div class="kv"><span>Rate</span><b>${fmtNPR(v.reading.rateP)}/unit</b></div>
+      <div class="kv"><span>This period's charge</span><b>${fmtNPR(v.chargeP)}</b></div>
+      ${v.previousP !== 0 ? `<div class="kv"><span>${v.previousP>0?'Balance before this bill':'Credit before this bill'}</span><b>${fmtNPR(Math.abs(v.previousP))}</b></div>` : ''}
+      <div class="kv big"><span>Total due on this bill</span><b>${fmtNPR(v.totalDueP)}</b></div>
+      <div class="kv"><span>Received against it</span><b>${fmtNPR(v.receivedP)}</b></div>
+      <div class="kv"><span>Status</span><span class="chip ${v.status}">${elecStatusLabel(v.status)}</span></div>
+      <div class="row-actions" style="justify-content:flex-start;margin-top:10px;gap:8px;">
+        <button class="btn small ghost" onclick="openModal({type:'reading', tenantId:'${escapeAttr(t.id)}', mKey:'${mKey}'})">Edit reading</button>
+        <button class="btn small ghost" onclick="printElectricityBill('${escapeAttr(t.id)}','${mKey}')">🧾 View / print</button>
+        <button class="btn small ghost" onclick="shareElecBillWhatsApp('${escapeAttr(t.id)}','${mKey}')">📱 WhatsApp</button>
+        <button class="btn small ghost" onclick="removeReading('${escapeAttr(t.id)}','${mKey}')">Remove reading</button>
+      </div>`;
+  } else {
+    out += `<div class="msub" style="margin-top:10px;">No reading logged for ${BS_MONTHS[state.month.m-1]} ${state.month.y}.</div>
+      <div class="row-actions" style="justify-content:flex-start;"><button class="btn small" onclick="openModal({type:'reading', tenantId:'${escapeAttr(t.id)}', mKey:'${mKey}'})">Log reading for this month</button></div>`;
+  }
+  const hist = buildElecHistory(t).filter(k => k !== mKey);
+  out += `<div style="margin-top:18px;border-top:1px solid var(--paper-line);padding-top:12px;">
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:var(--ink-soft);margin-bottom:8px;">Earlier bills</div>`;
+  if(hist.length === 0) out += `<div class="msub">None yet.</div>`;
+  else hist.forEach(k => {
+    const bv = elecBillView(t, k);
+    if(!bv) return;
+    out += `<div class="hist-item">
+      <div>${fmtBsMonth(k)}<div class="hist-note">${bv.reading.units} units · charge ${fmtNPR(bv.chargeP)} · total then ${fmtNPR(bv.totalDueP)}</div></div>
+      <div style="text-align:right;">
+        <span class="chip ${bv.status}">${elecStatusLabel(bv.status)}</span>
+        <div style="margin-top:4px;display:flex;gap:6px;justify-content:flex-end;">
+          <button class="icon-btn" title="View / print" onclick="printElectricityBill('${escapeAttr(t.id)}','${k}')">🧾</button>
+          <button class="icon-btn" title="WhatsApp" onclick="shareElecBillWhatsApp('${escapeAttr(t.id)}','${k}')">📱</button>
+          <button class="icon-btn" title="Edit reading" onclick="openModal({type:'reading', tenantId:'${escapeAttr(t.id)}', mKey:'${k}'})">✎</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  return out + `</div>`;
+}
+
+function detailHistory(t, L){
+  const rows = L.entries.filter(e => state.showRemoved || !e.removed);
+  if(rows.length === 0) return `<div class="msub">No ledger entries yet.</div>`;
+  return `
+    <div class="row-actions" style="justify-content:flex-start;margin-bottom:8px;gap:8px;">
+      <button class="btn small ghost" onclick="printLedgerFor('${escapeAttr(t.id)}')">🖨 Save / print</button>
+      <button class="btn small ghost" onclick="toggleRemoved()">${state.showRemoved?'Hide':'Show'} removed entries</button>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="ledger-table">
+        <thead><tr><th>Date</th><th>Particulars</th><th style="text-align:right;">Debit</th><th style="text-align:right;">Credit</th><th style="text-align:right;">Balance</th><th></th></tr></thead>
+        <tbody>
+          ${rows.map(e => `
+            <tr class="${e.removed?'removed':''}">
+              <td>${fmtBs(e.date)}</td>
+              <td>${escapeHtml(e.label)}${e.note ? `<div class="hist-note">${escapeHtml(e.note)}</div>` : ''}</td>
+              <td style="text-align:right;" class="debit">${e.debitP ? fmtNPR(e.debitP) : '—'}</td>
+              <td style="text-align:right;" class="credit">${e.creditP ? fmtNPR(e.creditP) : '—'}</td>
+              <td style="text-align:right;"><b>${e.removed ? '—' : fmtNPR(e.balanceP)}</b></td>
+              <td style="text-align:right;">${entryActionHTML(t, e)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="kv big ${L.totalP<0?'credit':'due'}" style="margin-top:10px;"><span>Closing balance</span><b>${fmtNPR(Math.abs(L.totalP))}${L.totalP<0?' cr':''}</b></div>
+    <div class="msub" style="margin-top:8px;">
+      Every figure in this app is this table. Rent-due lines are generated from the rooms, the due day and the opening
+      balance date, so they are corrected by editing those rather than deleted one by one. Removed entries are kept,
+      struck through, and can be brought back.
+    </div>`;
+}
+function entryActionHTML(t, e){
+  if(e.refType === 'entry'){
+    return e.removed
+      ? `<button class="icon-btn" title="Restore" onclick="restoreEntry('${escapeAttr(t.id)}','${escapeAttr(e.refKey)}')">↺</button>`
+      : `<button class="icon-btn" title="Remove" onclick="removeEntry('${escapeAttr(t.id)}','${escapeAttr(e.refKey)}')">✕</button>`;
+  }
+  if(e.refType === 'reading'){
+    return e.removed
+      ? `<button class="icon-btn" title="Restore" onclick="restoreReading('${escapeAttr(t.id)}','${escapeAttr(e.refKey)}')">↺</button>`
+      : `<button class="icon-btn" title="Remove reading" onclick="removeReading('${escapeAttr(t.id)}','${escapeAttr(e.refKey)}')">✕</button>`;
+  }
+  return '';
+}
+
+/* ---------- Reading helpers ---------- */
+function lastReadingBefore(tenantId, beforeKey){
+  const rd = state.readings[tenantId] || {};
+  const keys = Object.keys(rd).filter(k => k < beforeKey && !rd[k].deleted).sort();
+  if(!keys.length) return null;
+  const k = keys[keys.length-1];
+  return Object.assign({ mKey: k }, rd[k]);
+}
+function elecBalanceBefore(t, mKey){
+  const L = ledger(t);
+  const bill = L.entries.find(e => e.key === 'read:'+mKey);
+  if(bill) return bill.bucketBalanceBeforeP;
+  let bal = 0;
+  L.entries.forEach(e => { if(!e.removed && e.bucket === 'elec' && (e.mKey||'') < mKey) bal += e.debitP - e.creditP; });
+  return bal;
+}
+function updateReadingCalc(){
+  const pv = document.getElementById('f-prev'); if(!pv) return;
+  const prev = Number(pv.value||0);
+  const curr = Number((document.getElementById('f-curr')||{}).value||0);
+  const rateP = readMoney('f-rate');
+  const units = Math.max(0, curr - prev);
+  const el = document.getElementById('read-calc');
+  if(el) el.innerHTML = `Units used: <b>${units}</b> · charge for this period: <b>${fmtNPR(units*rateP)}</b>` +
+    (curr < prev ? `<br><span style="color:var(--margin-red);">Current reading is lower than the previous one — check the meter.</span>` : '');
+}
+function openNextReading(tenantId){
+  const rd = state.readings[tenantId] || {};
+  const keys = Object.keys(rd).filter(k => !rd[k].deleted).sort();
+  let y, m;
+  if(!keys.length){ y = state.month.y; m = state.month.m; }
+  else {
+    const [ly, lm] = keys[keys.length-1].split('-').map(Number);
+    const n = bsMonthKeyNum(ly, lm) + 1;
+    y = Math.floor((n-1)/12); m = ((n-1)%12)+1;
+  }
+  if(y < BS_MIN_YEAR || y > BS_MAX_YEAR){ y = state.month.y; m = state.month.m; }
+  openModal({ type:'reading', tenantId, mKey: bsKeyStr(y,m) });
+}
+
+/* ---------- Write handlers ---------- */
+function addRoomRow(){
+  const container = document.getElementById('rooms-editor');
+  const div = document.createElement('div');
+  div.className = 'room-row';
+  div.dataset.id = '';
+  div.style.cssText = 'display:flex;gap:8px;margin-bottom:6px;align-items:center;';
+  div.innerHTML = `<input class="room-label" style="flex:1;" placeholder="Room / unit name">
+    <input class="room-rent" type="number" step="0.01" style="width:110px;" value="0" oninput="recomputeRoomsTotal()">
+    <button type="button" class="icon-btn" title="Remove room" onclick="this.closest('.room-row').remove(); recomputeRoomsTotal();">✕</button>`;
+  container.appendChild(div);
+  recomputeRoomsTotal();
+}
+function recomputeRoomsTotal(){
+  const total = Array.from(document.querySelectorAll('#rooms-editor .room-rent')).reduce((s,i)=>s+toPaisa(i.value), 0);
+  const el = document.getElementById('rooms-total');
+  if(el) el.textContent = fmtNPR(total);
+}
+
+async function saveTenantForm(type, id){
+  const name = document.getElementById('f-name').value.trim();
+  if(!name){ alert('Name is required'); return; }
+  const rows = Array.from(document.querySelectorAll('#rooms-editor .room-row'));
+  if(rows.length === 0){ alert('Add at least one room'); return; }
+
+  const existing = type === 'edit' ? tenantById(id) : null;
+  const byId = {};
+  if(existing) (existing.rooms||[]).forEach(r => { byId[r.id] = r; });
+
+  const rooms = rows.map(row => {
+    const rid = row.dataset.id;
+    const prev = rid && byId[rid];
+    return {
+      id: rid || uid(),
+      label: row.querySelector('.room-label').value.trim() || 'Room',
+      rentP: toPaisa(row.querySelector('.room-rent').value),
+      since: prev ? prev.since : todayStr(),
+    };
+  });
+  const common = {
+    name,
+    houseId: document.getElementById('f-house').value || null,
+    phone: document.getElementById('f-phone').value.trim(),
+    dueDay: Math.min(32, Math.max(1, Number(document.getElementById('f-due').value || 5))),
+    depositP: readMoney('f-deposit'),
+    leaseStart: readBsDateInput('f-lease'),
+    updatedAt: now(),
+  };
+
+  if(type === 'edit'){
+    const t = existing;
+    const oldRentP = Number(t.rentP||0);
+    const oldRoomCount = (t.rooms||[]).length;
+    Object.assign(t, common);
+    t.rooms = rooms;
+    syncTenantFromRooms(t);
+    if(t.rentP !== oldRentP){
+      const effKey = readBsMonthInput('f-eff');
+      const noteEl = document.getElementById('f-rentnote');
+      t.rentHistory = (t.rentHistory||[]).filter(rh => rh.mKey !== effKey);
+      t.rentHistory.push({
+        id: uid(), date: effKey+'-01', mKey: effKey,
+        oldRentP, newRentP: t.rentP,
+        type: rooms.length > oldRoomCount ? 'room_added' : (t.rentP > oldRentP ? 'increase' : 'decrease'),
+        note: noteEl ? noteEl.value.trim() : ''
+      });
+    }
+  } else {
+    const t = Object.assign({ id: uid() }, common, {
+      rooms, rentHistory: [], deleted:false, deletedAt:null,
+      anchorDate: readBsDateInput('f-anchordate'),
+      anchorBalanceP: readMoney('f-anchoramt'),
+      anchorNote: '',
+    });
+    syncTenantFromRooms(t);
+    state.tenants.push(t);
+    state.entries[t.id] = [];
+    state.readings[t.id] = {};
+  }
+  await save('tenants');
+  closeModal();
+}
+
+async function saveAnchor(tenantId){
+  const t = tenantById(tenantId);
+  t.anchorDate = readBsDateInput('f-adate');
+  t.anchorBalanceP = readMoney('f-aamt');
+  t.anchorNote = document.getElementById('f-anote').value.trim();
+  t.updatedAt = now();
+  await save('tenants');
+  openModal({ type:'detail', tenantId });
+}
+
+function pushEntry(tenantId, entry){
+  if(!state.entries[tenantId]) state.entries[tenantId] = [];
+  state.entries[tenantId].push(Object.assign({ id: uid(), updatedAt: now(), deleted:false, deletedAt:null }, entry));
+}
+async function logRentPayment(tenantId, mKey){
+  const amountP = readMoney('f-amount');
+  if(amountP === 0){ alert('Enter an amount.'); return; }
+  pushEntry(tenantId, {
+    kind:'payment', bucket:'rent', mKey,
+    date: readBsDateInput('f-date'), amountP,
+    note: document.getElementById('f-note').value.trim(),
+    label:'Rent payment received'
+  });
+  await save('entries');
+  state.detailTab = 'rent';
+  openModal({ type:'detail', tenantId, keepTab:true });
+}
+async function logElecPayment(tenantId, mKey){
+  const amountP = readMoney('f-epamt');
+  if(amountP === 0){ alert('Enter an amount.'); return; }
+  pushEntry(tenantId, {
+    kind:'payment', bucket:'elec', mKey,
+    date: readBsDateInput('f-epdate'), amountP,
+    note: document.getElementById('f-epnote').value.trim(),
+    label:'Electricity payment received'
+  });
+  await save('entries');
+  state.detailTab = 'elec';
+  openModal({ type:'detail', tenantId, keepTab:true });
+}
+async function logAdjustment(tenantId){
+  const amountP = readMoney('f-adjamt');
+  if(amountP === 0){ alert('Enter an amount.'); return; }
+  const kind = document.getElementById('f-adjkind').value === 'charge' ? 'charge' : 'credit';
+  const bucket = document.getElementById('f-adjbucket').value === 'elec' ? 'elec' : 'rent';
+  const note = document.getElementById('f-adjnote').value.trim();
+  pushEntry(tenantId, {
+    kind, bucket, mKey: null, date: readBsDateInput('f-adjdate'), amountP,
+    note, label: kind==='charge' ? 'Adjustment — charge' : 'Adjustment — credit'
+  });
+  await save('entries');
+  openModal({ type:'detail', tenantId, keepTab:true });
+}
+async function saveReading(tenantId, mKey){
+  const prev = Number(document.getElementById('f-prev').value||0);
+  const curr = Number(document.getElementById('f-curr').value||0);
+  if(curr < prev && !confirm('The current reading is lower than the previous one. Save anyway?')) return;
+  if(!state.readings[tenantId]) state.readings[tenantId] = {};
+  const old = state.readings[tenantId][mKey];
+  state.readings[tenantId][mKey] = {
+    prevReading: prev, currReading: curr, units: Math.max(0, curr - prev),
+    rateP: readMoney('f-rate'),
+    readingDate: readBsDateInput('f-rdate'),
+    note: document.getElementById('f-rnote').value.trim(),
+    updatedAt: now(), deleted: false, deletedAt: (old ? old.deletedAt : null)
+  };
+  await save('readings');
+  state.detailTab = 'elec';
+  openModal({ type:'detail', tenantId, keepTab:true });
+}
+
+/* ---------- Soft delete everywhere ----------
+   Records are marked, not erased. A tombstone with a timestamp is what stops a
+   device that still holds the old copy from quietly putting it back at the next
+   sync, and it means nothing is ever lost to a mis-tap. */
+function tombstone(rec, flag){
+  rec.deleted = flag;
+  rec.deletedAt = flag ? now() : null;
+  rec.updatedAt = now();
+}
+async function removeEntry(tenantId, entryId){
+  const en = (state.entries[tenantId]||[]).find(e => e.id === entryId);
+  if(!en) return;
+  tombstone(en, true);
+  await save('entries');
+  render();
+}
+async function restoreEntry(tenantId, entryId){
+  const en = (state.entries[tenantId]||[]).find(e => e.id === entryId);
+  if(!en) return;
+  tombstone(en, false);
+  await save('entries');
+  render();
+}
+async function removeReading(tenantId, mKey){
+  const r = (state.readings[tenantId]||{})[mKey];
+  if(!r) return;
+  if(!confirm('Remove this meter reading? Its bill disappears from the ledger; payments already received stay. You can bring it back from the ledger tab.')) return;
+  tombstone(r, true);
+  await save('readings');
+  render();
+}
+async function restoreReading(tenantId, mKey){
+  const r = (state.readings[tenantId]||{})[mKey];
+  if(!r) return;
+  tombstone(r, false);
+  await save('readings');
+  render();
+}
+async function archiveTenant(id){
+  const t = tenantById(id);
+  if(!t) return;
+  if(!confirm('Archive '+t.name+'? Their ledger is kept and they can be restored from the archive.')) return;
+  tombstone(t, true);
+  await save('tenants');
+  closeModal();
+}
+async function restoreTenant(id){
+  const t = tenantById(id); if(!t) return;
+  tombstone(t, false);
+  await save('tenants');
+  openModal({type:'archive'});
+}
+async function purgeTenant(id){
+  const t = tenantById(id); if(!t) return;
+  if(!confirm('Permanently delete '+t.name+' and their entire ledger? This cannot be undone, and a device that has not synced since may still hold a copy.')) return;
+  state.tenants = state.tenants.filter(x => x.id !== id);
+  delete state.entries[id]; delete state.readings[id];
+  await Promise.all([save('tenants'), save('entries'), save('readings')]);
+  openModal({type:'archive'});
+}
+async function addHouseFromForm(){
+  const input = document.getElementById('f-newhouse');
+  const name = input.value.trim();
+  if(!name) return;
+  state.houses.push({ id: uid(), name, address:'', updatedAt: now(), deleted:false, deletedAt:null });
+  await save('houses');
+  openModal({type:'houses'});
+}
+async function renameHouse(id){
+  const h = state.houses.find(x=>x.id===id); if(!h) return;
+  const name = prompt('House name', h.name);
+  if(name === null) return;
+  const trimmed = name.trim(); if(!trimmed) return;
+  h.name = trimmed; h.updatedAt = now();
+  await save('houses');
+  openModal({type:'houses'});
+}
+async function archiveHouse(id){
+  const count = liveTenants().filter(t=>t.houseId===id).length;
+  if(!confirm('Archive this house? '+count+' tenant(s) become unassigned; their records are untouched.')) return;
+  const h = state.houses.find(x=>x.id===id); if(!h) return;
+  tombstone(h, true);
+  state.tenants.forEach(t => { if(t.houseId===id){ t.houseId = null; t.updatedAt = now(); } });
+  await Promise.all([save('houses'), save('tenants')]);
+  openModal({type:'houses'});
+}
+async function restoreHouse(id){
+  const h = state.houses.find(x=>x.id===id); if(!h) return;
+  tombstone(h, false);
+  await save('houses');
+  openModal({type:'archive'});
+}
+async function purgeHouse(id){
+  if(!confirm('Permanently delete this house? This cannot be undone.')) return;
+  state.houses = state.houses.filter(h => h.id !== id);
+  await save('houses');
+  openModal({type:'archive'});
+}
+async function saveSettings(){
+  state.settings.elecRateP = readMoney('f-rate-setting');
+  await save('settings');
+  closeModal();
+}
+
+/* ---------- Backup ---------- */
+function currentSnapshot(){
+  return {
+    _app:'rent-ledger', schema: SCHEMA, exportedOn: todayStr(), savedAt: now(),
+    houses: state.houses, tenants: state.tenants,
+    entries: state.entries, readings: state.readings, settings: state.settings
+  };
+}
+function exportData(){
+  const t = bsToday();
+  const blob = new Blob([JSON.stringify(currentSnapshot(), null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `rent-ledger-backup-${t.y}-${pad2(t.m)}-${pad2(t.d)}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function triggerImport(){ const i = document.getElementById('import-file-input'); if(i) i.click(); }
+async function importData(fileInput){
+  const file = fileInput.files && fileInput.files[0];
+  if(!file) return;
+  try{
+    const data = normalizeSnapshot(JSON.parse(await file.text()));
+    if(!data){ alert("This file doesn't look like a Rent Ledger backup."); fileInput.value=''; return; }
+    const replace = confirm(
+      'Click OK to REPLACE all data on this device with this backup file.\n' +
+      "Click Cancel to MERGE it in instead (safer if both devices have new entries)."
+    );
+    if(replace){
+      state.houses = data.houses; state.tenants = data.tenants;
+      state.entries = data.entries; state.readings = data.readings;
+      state.settings = data.settings;
+    } else {
+      mergeSnapshotIntoState(data);
+    }
+    ensureShape();
+    await saveAll();
+    fileInput.value = '';
+    closeModal();
+    alert('Import complete.');
+  }catch(e){
+    console.error('import failed', e);
+    alert("Could not read that file — make sure it's a Rent Ledger backup JSON.");
+    fileInput.value = '';
+  }
+}
+
+/* ---------- Merge: newest edit wins, and a deletion is an edit ----------
+   The old merge took whatever the other device had, unconditionally, so a
+   tenant deleted here came back at the next sync and a stale copy could
+   overwrite a correction made minutes ago. Every record now carries updatedAt
+   and the later timestamp wins, tombstones included. */
+function mergeById(localArr, remoteArr){
+  const idx = new Map(localArr.map((r,i)=>[r.id,i]));
+  (remoteArr||[]).forEach(r => {
+    if(!r || !r.id) return;
+    if(!idx.has(r.id)){ localArr.push(r); idx.set(r.id, localArr.length-1); return; }
+    const cur = localArr[idx.get(r.id)];
+    if(Number(r.updatedAt||0) > Number(cur.updatedAt||0)) localArr[idx.get(r.id)] = r;
+  });
+}
+function mergeSnapshotIntoState(data){
+  mergeById(state.houses, data.houses);
+  mergeById(state.tenants, data.tenants);
+  Object.keys(data.entries||{}).forEach(tid => {
+    if(!Array.isArray(state.entries[tid])) state.entries[tid] = [];
+    mergeById(state.entries[tid], data.entries[tid]);
+  });
+  Object.keys(data.readings||{}).forEach(tid => {
+    if(!state.readings[tid]) state.readings[tid] = {};
+    const local = state.readings[tid], remote = data.readings[tid] || {};
+    Object.keys(remote).forEach(mk => {
+      if(!local[mk] || Number(remote[mk].updatedAt||0) > Number(local[mk].updatedAt||0)) local[mk] = remote[mk];
+    });
+  });
+  if(data.settings) Object.assign(state.settings, data.settings);
+}
+
+/* ---------- Google Drive sync ---------- */
+function gsiReady(){ return typeof google !== 'undefined' && google.accounts && google.accounts.oauth2; }
+function waitForGsi(retries){
+  retries = retries===undefined ? 20 : retries;
+  return new Promise(resolve => {
+    const check = () => { if(gsiReady() || retries<=0) resolve(); else { retries--; setTimeout(check, 150); } };
+    check();
+  });
+}
+function authHeaders(){ return { 'Authorization': 'Bearer '+state.google.accessToken }; }
+function timeAgo(ts){
+  const s = Math.floor((Date.now()-ts)/1000);
+  if(s<60) return 'just now';
+  const mnt = Math.floor(s/60); if(mnt<60) return mnt+'m ago';
+  const h = Math.floor(mnt/60); if(h<24) return h+'h ago';
+  return Math.floor(h/24)+'d ago';
+}
+function initGoogleAuth(){
+  if(!GOOGLE_CLIENT_ID || !gsiReady() || state.google.tokenClient) return;
+  state.google.tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: 'https://www.googleapis.com/auth/drive.appdata',
+    callback: () => {}
+  });
+}
+function signInGoogle(){
+  if(!GOOGLE_CLIENT_ID){ alert("Google sync isn't set up in this build — see Settings for what it needs, and use Export / Import in the meantime."); return; }
+  if(!gsiReady()){ alert('Could not load Google Sign-In. Check your connection, and make sure this page is served over https:// rather than opened as a local file.'); return; }
+  initGoogleAuth();
+  state.google.tokenClient.callback = async (resp) => {
+    if(resp.error){ alert('Google sign-in failed: '+resp.error); return; }
+    state.google.accessToken = resp.access_token;
+    state.google.tokenExpiresAt = Date.now() + (Number(resp.expires_in||3600)-60)*1000;
+    state.google.signedIn = true;
+    await fetchGoogleEmail();
+    render();
+    await syncFromDrive();
+  };
+  state.google.tokenClient.requestAccessToken({ prompt: 'consent' });
+}
+function signOutGoogle(){
+  if(state.google.accessToken && gsiReady()) google.accounts.oauth2.revoke(state.google.accessToken, ()=>{});
+  state.google.signedIn = false; state.google.accessToken = null; state.google.email = '';
+  render();
+}
+async function fetchGoogleEmail(){
+  try{
+    const r = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', { headers: authHeaders() });
+    if(r.ok){ const info = await r.json(); state.google.email = info.email || ''; }
+  }catch(e){}
+}
+function ensureFreshToken(){
+  if(!GOOGLE_CLIENT_ID || !gsiReady()) return Promise.resolve(false);
+  if(state.google.accessToken && Date.now() < state.google.tokenExpiresAt) return Promise.resolve(true);
+  initGoogleAuth();
+  return new Promise(resolve => {
+    state.google.tokenClient.callback = async (resp) => {
+      if(resp.error){ resolve(false); return; }
+      state.google.accessToken = resp.access_token;
+      state.google.tokenExpiresAt = Date.now() + (Number(resp.expires_in||3600)-60)*1000;
+      state.google.signedIn = true;
+      await fetchGoogleEmail();
+      resolve(true);
+    };
+    state.google.tokenClient.requestAccessToken({ prompt: '' });
+  });
+}
+async function driveFindFileId(){
+  if(state.google.fileId) return state.google.fileId;
+  const q = encodeURIComponent(`name='${DRIVE_FILE_NAME}' and trashed=false`);
+  const r = await fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${q}&fields=files(id,modifiedTime)`, { headers: authHeaders() });
+  if(!r.ok) throw new Error('Drive lookup failed: '+r.status);
+  const data = await r.json();
+  if(data.files && data.files.length){
+    state.google.fileId = data.files[0].id;
+    localStorage.setItem(NS+'drive_fileId', state.google.fileId);
+  }
+  return state.google.fileId;
+}
+async function driveReadFile(fileId){
+  const r = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, { headers: authHeaders() });
+  if(!r.ok) throw new Error('Drive read failed: '+r.status);
+  return r.json();
+}
+async function driveWriteFile(payload){
+  const body = JSON.stringify(payload);
+  if(state.google.fileId){
+    const r = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${state.google.fileId}?uploadType=media`, {
+      method:'PATCH', headers: Object.assign({'Content-Type':'application/json'}, authHeaders()), body
+    });
+    if(!r.ok) throw new Error('Drive write failed: '+r.status);
+  } else {
+    const boundary = 'ledgerbound';
+    const metadata = { name: DRIVE_FILE_NAME, parents: ['appDataFolder'] };
+    const multipartBody =
+      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n`+
+      `--${boundary}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${boundary}--`;
+    const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method:'POST',
+      headers: Object.assign({'Content-Type': `multipart/related; boundary=${boundary}`}, authHeaders()),
+      body: multipartBody
+    });
+    if(!r.ok) throw new Error('Drive create failed: '+r.status);
+    const created = await r.json();
+    state.google.fileId = created.id;
+    localStorage.setItem(NS+'drive_fileId', state.google.fileId);
+  }
+}
+async function syncFromDrive(){
+  if(state.google.syncing) return;
+  state.google.syncing = true;
+  try{
+    const ok = await ensureFreshToken();
+    if(ok){
+      const fileId = await driveFindFileId();
+      if(fileId){
+        const remote = normalizeSnapshot(await driveReadFile(fileId));
+        if(remote){ mergeSnapshotIntoState(remote); ensureShape(); }
+        await Promise.all(STORE_KEYS.map(k => {
+          try{ localStorage.setItem(NS+k, JSON.stringify(state[k])); }catch(e){}
+          return Promise.resolve();
+        }));
+      }
+      await driveWriteFile(currentSnapshot());
+      state.google.lastSynced = Date.now();
+    }
+  }catch(e){ console.error('Drive sync failed', e); }
+  state.google.syncing = false;
+  render();
+}
+let pushTimer = null;
+function schedulePush(){
+  if(!GOOGLE_CLIENT_ID || !state.google.signedIn) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(async ()=>{
+    try{
+      if(!(await ensureFreshToken())) return;
+      await driveWriteFile(currentSnapshot());
+      state.google.lastSynced = Date.now();
+      render();
+    }catch(e){ console.error('Drive push failed', e); }
+  }, 1500);
+}
+
+loadAll();
+</script>
+</body>
+</html>
